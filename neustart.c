@@ -5,6 +5,23 @@
 
 volatile uint8_t sekunde;
 volatile uint8_t prell;
+volatile uint8_t minute;
+volatile uint8_t stunde;
+volatile uint8_t tag;
+uint8_t monate[] = { 31,28,31,30,31,30, 31, 31, 30, 31, 30, 31 }
+uint8_t monate_schalt[] = { 31,29,31,30,31,30, 31, 31, 30, 31, 30, 31 }
+uint8_t jahr = 2024;
+uint8_t aktuellermonat = 3;
+
+if(stunde>=24)stunde=0&&day++;
+if(jahr%4==0){
+if(day>=monate_schalt[aktuellermonat])day=0&&aktuellermonat++;
+if(aktuellermonat>=monate_schalt.legth)aktuellermonat=0&&jahr++;
+}
+else{
+if(day>=monate[aktuellermonat])day=0&&aktuellermonat++;
+if(aktuellermonat>=monate.legth)aktuellermonat=0&&jahr++;
+}
 
 void main(){
 
