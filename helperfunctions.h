@@ -29,3 +29,14 @@ void monate(){
             }
         }
 }
+
+
+void init_PWM() {
+    // PWM mit TC2 an Pin 17 (OC2A an PORTB,3):
+    TCCR2A = (1 << COM2A1) | (1 << WGM21) | (1 << WGM20); // Nicht-invertierter Modus, Fast PWM
+    TCCR2B = (1 << CS22) | (1 << CS21); // Prescaler /256, resultiert in einer PWM-Frequenz von 1 Hz
+}
+
+void set_LED_PWM(uint8_t brightness) {
+    OCR2A = brightness; // für PWM
+}
