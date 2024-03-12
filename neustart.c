@@ -1,8 +1,9 @@
 #include <avr/interrupt.h>
 #include <avr/io.h>
 #include <helperfunctions.h>
+#include <avr/wdt.h>
 
-
+volatile uint8_t watchdog;
 volatile uint8_t sekunde;
 volatile uint8_t prell;
 volatile uint8_t minute;
@@ -20,7 +21,7 @@ if(jahr%4==0){
     aktuellermonat++;
     //ISR eeprom read/write
     }
-    if(aktuellermonat>=monate_schalt.legth){
+    if(aktuellermonat>sizeof(monate_schalt)){
         aktuellermonat=0;
         jahr++;
         //ISR eeprom read/write
@@ -32,7 +33,7 @@ else{
         aktuellermonat++;
         //eeprom read/write
     }
-    if(aktuellermonat>=monate.legth){
+    if(aktuellermonat>sizeof(monate)){
         aktuellermonat=0;
         jahr++;
         //eeprom read write
@@ -48,6 +49,13 @@ void main(){
     TIMSK |= (1<<OCIE2A); //enable compare interrupt
     TIMSK |= (1<<TOIE2); //enable overflow 
     EIMSK |= (1<<INT0, 1<<INT1); // enable interupt0
+    // Initialisierung des Watchdog-Timers
+    MCUSR &= ~(1 << WDRF); // Watchdog-Reset löschen
+    WDTCSR |= (1 << WDCE) | (1 << WDE); // WDCE setzen, WDE setzen
+    WDTCSR = (1 << WDE) | (1 << WDP2) | (1 << WDP1) | (1 << WDP0); // WDT auf 2 Sekunden einstellen
+    // Watchdog-Interrupt aktivieren
+    WDTCR |= (1 << WDIE);
+
     sei();
 
     while(1){
@@ -82,14 +90,15 @@ ISR(INT1_vect){
 
 }
 
-ISR(WDT_vect){
-
-__disable_interrupt();
-__watchdog_reset();
-WDTCSR|= (1<<WDCE) | (1<<WDE);
-WDTCSR|= (1<<WDE) | (1<<WDP2) | (1<<WDP1)| (1<<WDP0); //WDP prescaler 256 2 sec at 5v
-__enable_interrupt();
-
+ISR(WDT_vect) {
+    cli(); // Interrupts deaktivieren
+    __watchdog_reset();
+    if (watchdog >= 30) {
+        watchdog = 0;
+    } else {
+        watchdog++;
+    }
+    sei(); // Interrupts aktivieren
 }
 
 ISR(EE_READY_vect){
