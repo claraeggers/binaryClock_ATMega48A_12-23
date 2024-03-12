@@ -15,12 +15,28 @@ uint8_t aktuellermonat = 3;
 
 if(stunde>=24)stunde=0&&day++;
 if(jahr%4==0){
-if(day>=monate_schalt[aktuellermonat])day=0&&aktuellermonat++;
-if(aktuellermonat>=monate_schalt.legth)aktuellermonat=0&&jahr++;
+    if(day>=monate_schalt[aktuellermonat]){
+    day=0;
+    aktuellermonat++;
+    //ISR eeprom read/write
+    }
+    if(aktuellermonat>=monate_schalt.legth){
+        aktuellermonat=0;
+        jahr++;
+        //ISR eeprom read/write
+    }
 }
 else{
-if(day>=monate[aktuellermonat])day=0&&aktuellermonat++;
-if(aktuellermonat>=monate.legth)aktuellermonat=0&&jahr++;
+    if(day>=monate[aktuellermonat]){
+        day=0;
+        aktuellermonat++;
+        //eeprom read/write
+    }
+    if(aktuellermonat>=monate.legth){
+        aktuellermonat=0;
+        jahr++;
+        //eeprom read write
+    }
 }
 
 void main(){
