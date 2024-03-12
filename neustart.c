@@ -2,43 +2,18 @@
 #include <avr/io.h>
 #include <helperfunctions.h>
 #include <avr/wdt.h>
+#include <avr/eeprom.h>
 
 volatile uint8_t watchdog;
 volatile uint8_t sekunde;
-volatile uint8_t prell;
+volatile uint8_t prell =0;
 volatile uint8_t minute;
 volatile uint8_t stunde;
 volatile uint8_t tag;
-uint8_t monate[] = { 31,28,31,30,31,30, 31, 31, 30, 31, 30, 31 }
-uint8_t monate_schalt[] = { 31,29,31,30,31,30, 31, 31, 30, 31, 30, 31 }
+uint8_t monate[] = { 31,28,31,30,31,30, 31, 31, 30, 31, 30, 31 };
+uint8_t monate_schalt[] = { 31,29,31,30,31,30, 31, 31, 30, 31, 30, 31 };
 uint8_t jahr = 2024;
 uint8_t aktuellermonat = 3;
-
-if(stunde>=24)stunde=0&&day++;
-if(jahr%4==0){
-    if(day>=monate_schalt[aktuellermonat]){
-    day=0;
-    aktuellermonat++;
-    //ISR eeprom read/write
-    }
-    if(aktuellermonat>sizeof(monate_schalt)){
-        aktuellermonat=0;
-        jahr++;
-        //ISR eeprom read/write
-    }
-}
-else{
-    if(day>=monate[aktuellermonat]){
-        day=0;
-        aktuellermonat++;
-        //eeprom read/write
-    }
-    if(aktuellermonat>sizeof(monate)){
-        aktuellermonat=0;
-        jahr++;
-        //eeprom read write
-    }
-}
 
 void main(){
 
@@ -55,39 +30,36 @@ void main(){
     WDTCSR = (1 << WDE) | (1 << WDP2) | (1 << WDP1) | (1 << WDP0); // WDT auf 2 Sekunden einstellen
     // Watchdog-Interrupt aktivieren
     WDTCR |= (1 << WDIE);
-
     sei();
 
     while(1){
-    if(prell>=0)prell--;
-
-
-    }
-
-
+    
+    void entprellen();
+    void monate();
 
 }
 
 ISR(TIMER2_COMPA_vect){
 
-    sekunde++;
-    if(sekunde>=60)sekunde=0;    
+    minute++;
+    if(minute>=60)minute=0;
+    stunde++;    
 }
 
 ISR(INT0_vect){
-    if(prell==0){
+    if (prell == 0) {
+        // Aktionen ausführen, wenn der Taster gedrückt wurde und Prellen beendet ist
+        // Zum Beispiel: Taster ist gedrückt
     }
-    prell=200;
-    //interrupt routine
+    prell = 3; // Setze Prellzeit auf 3 Taktzyklen
 }
 
 ISR(INT1_vect){
-    if(prell==0){
+    if (prell == 0) {
+        // Aktionen ausführen, wenn der Taster gedrückt wurde und Prellen beendet ist
+        // Zum Beispiel: Taster ist gedrückt
     }
-
-    //interrupt routine
-    prell=200;
-
+    prell = 3; // Setze Prellzeit auf 3 Taktzyklen entspricht 3sek
 }
 
 ISR(WDT_vect) {
