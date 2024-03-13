@@ -12,43 +12,37 @@ volatile uint8_t stunde = 0;
 volatile boolean countingHour = 0;
 volatile boolean countingMin = 0;
 volatile boolean sleepMode = 0;
+volatile uint8_t hourBitShiftDown = 0;
+volatile uint8_t hourBitShiftUpper = 0;
+
 
 #define sleepB PORTD2; //int0
 #define hButton PORTD3;  //int1
 #define mButton PORTB0; //pinchange interrupt 1
-#define mLED0 PORTC0;
-#define mLED1 PORTC1;
-#define mLED2 PORTC2;
-#define mLED3 PORTC3;
-#define mLED4 PORTC4;
-#define mLED5 PORTC5;
+#define mLED PORTC;
 #define hLED0 PORTB1;
 #define hLED1 PORTB2;
 #define hLED2 PORTD5;
 #define hLED3 PORTD6;
 #define hLED4 PORTD7;
 
-
-
-
-
-
 //isr core-functionality, isr wird 1x pro sekunde ausgelöst
 ISR(TIMER2_OVF_vect){
+
     sekunde++
     if(sekunde>=60){
     minute++;
     sekunde = 0;
-    countingMin = 0;
-    countingHour = 0;
     }
     if(minute>=60){
     minute = 0;
-    stunde++;    
+    stunde++; 
     }
+
 }
 
 ISR(INT0_vect){
+
     if (prell == 0) {
        if(sleepMode == 0){
         SMCR |= (1<<SE) | (1<<SM1) | (1<<SM0); // SMCR sleepmodecontrolregister, SM1&SM0 == Power-Save
@@ -62,9 +56,11 @@ ISR(INT0_vect){
        }
     }
     prell = 255; // Setze Prellzeit auf 255 Taktzyklen entspricht 1 sek
+
 }
 
 ISR(INT1_vect){
+
     if (prell == 0) {
         if(isCounting == 1){
             hour++;
@@ -78,6 +74,26 @@ ISR(INT1_vect){
         }
     }
     prell = 90; // Setze Prellzeit auf 90 Taktzyklen entspricht 1/3 sek
+
+}
+
+
+ISR(PCINT0_vect){
+
+    if (prell == 0) {
+        if(isCounting == 1){
+            minute++;
+            if(minute>=60){
+                minute = 0;
+            }
+        }
+        else{
+            isCounting = 1;
+            minute = 0;
+        }
+    }
+    prell = 90; // Setze Prellzeit auf 90 Taktzyklen entspricht 1/3 sek
+    
 }
 
 ISR(WDT_vect) {
@@ -135,6 +151,7 @@ void main(){
     void entprellen();
     void tage();
     void displayTime();
+  
 
     }
 }
