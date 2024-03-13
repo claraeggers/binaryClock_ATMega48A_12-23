@@ -1,12 +1,3 @@
-volatile uint8_t tag;
-volatile uint8_t hourBitShiftDown = 0;
-volatile uint8_t hourBitShiftUpper = 0;
-uint8_t monate[] = { 31,28,31,30,31,30, 31, 31, 30, 31, 30, 31 };
-uint8_t monate_schalt[] = { 31,29,31,30,31,30, 31, 31, 30, 31, 30, 31 };
-uint8_t jahr = 2024;
-uint8_t aktuellermonat = 3;
-bool isSchalt = 1;
-
 void entprellen() {
     if (prell > 0) {
         prell--; // Dekrementiere Prellvariable

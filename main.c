@@ -20,6 +20,7 @@ ISR(TIMER2_OVF_vect){
 
 }
 
+//ISR für Sleep Button
 ISR(INT0_vect){
 
     if (prell == 0) {
@@ -38,6 +39,7 @@ ISR(INT0_vect){
 
 }
 
+//ISr für StundeneinstellungsButton
 ISR(INT1_vect){
 
     if (prell == 0) {
@@ -56,7 +58,7 @@ ISR(INT1_vect){
 
 }
 
-
+//ISR für Minuteneinstellung
 ISR(PCINT0_vect){
 
     if (prell == 0) {
@@ -75,6 +77,7 @@ ISR(PCINT0_vect){
     
 }
 
+//Watchdog ISR
 ISR(WDT_vect) {
     cli(); // Interrupts deaktivieren
     __watchdog_reset();
@@ -87,6 +90,7 @@ ISR(WDT_vect) {
     sei(); // Interrupts aktivieren
 }
 
+//EEPROM ISR (notwendig?)
 ISR(EE_READY_vect){
 
 
