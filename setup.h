@@ -1,4 +1,33 @@
-   void initialisieren(){
+void initialisieren(){
+
+volatile uint8_t watchdog = 0;
+volatile uint8_t prell = 0;
+volatile uint8_t sekunde = 0;
+volatile uint8_t minute = 0;
+volatile uint8_t stunde = 0;
+volatile uint8_t tag;
+volatile uint8_t hourBitShiftDown = 0;
+volatile uint8_t hourBitShiftUpper = 0;
+uint8_t monate[] = { 31,28,31,30,31,30, 31, 31, 30, 31, 30, 31 };
+uint8_t monate_schalt[] = { 31,29,31,30,31,30, 31, 31, 30, 31, 30, 31 };
+uint8_t jahr = 2024;
+uint8_t aktuellermonat = 3;
+
+volatile bool countingHour = 0;
+volatile bool countingMin = 0;
+volatile bool sleepMode = 0;
+bool isSchalt = 1;
+
+
+#define sleepB PORTD2; //int0
+#define hButton PORTD3;  //int1
+#define mButton PORTB0; //pinchange interrupt 1
+#define mLED PORTC;
+#define hLED0 PORTB1;
+#define hLED1 PORTB2;
+#define hLED2 PORTD5;
+#define hLED3 PORTD6;
+#define hLED4 PORTD7;
 
     //EXT CLOCK SOURCE
 

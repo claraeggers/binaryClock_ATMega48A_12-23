@@ -1,9 +1,11 @@
 volatile uint8_t tag;
+volatile uint8_t hourBitShiftDown = 0;
+volatile uint8_t hourBitShiftUpper = 0;
 uint8_t monate[] = { 31,28,31,30,31,30, 31, 31, 30, 31, 30, 31 };
 uint8_t monate_schalt[] = { 31,29,31,30,31,30, 31, 31, 30, 31, 30, 31 };
 uint8_t jahr = 2024;
 uint8_t aktuellermonat = 3;
-boolean isSchalt = 1;
+bool isSchalt = 1;
 
 void entprellen() {
     if (prell > 0) {
@@ -21,6 +23,7 @@ void tage(){
 }
 
 void monatjahr(){
+    
         //Funktion für Monate und Jahre
         if (jahr % 4 == 0) {
             isSchalt = 1;
@@ -49,12 +52,12 @@ void displayTime(){
 
     if(sleepMode == 0){
 
-        hourBitShiftDown = ( 00000111 && stunde); //Logik von 000xxxxx StundenByte für x = 0 oder 1 sollen die unteren 3 BITs auf PORTD angezeigt werden, dafür & mit bitmaske
+        hourBitShiftDown = ( 0b00000111 && stunde); //Logik von 000xxxxx StundenByte für x = 0 oder 1 sollen die unteren 3 BITs auf PORTD angezeigt werden, dafür & mit bitmaske
         hourBitShiftUp = ( stunde >> 3); //Logig von 000xxxxx Stundenbyte fpr x = 0 oder 1 sollen bit 3 und bit 4 alleine stehen, dafür linksshift um 3
         PORTD = hourBitShiftDown;
         PORTB = hourBitShiftUp;
-        // display minute and hour uint8_t in led 
-        PORTC = minute;
+        PORTC = minute;         // display minute and hour uint8_t in led 
+
     }
     else{
 
