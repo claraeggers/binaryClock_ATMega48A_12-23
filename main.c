@@ -33,12 +33,14 @@ ISR(TIMER2_OVF_vect){
 ISR(INT0_vect){
     if (prell == 0) {
        if(sleepMode == 0){
-        sleepMode = 1;
         SMCR |= (1<<SE) | (1<<SM1) | (1<<SM0); // SMCR sleepmodecontrolregister, SM1&SM0 == Power-Save
+        PRR |= ((1<<PRSPI) | (1<<PRADC); // extra power reduction throur PRR, adc and spi turnoff in sleepmode
+        sleepMode = 1;
        }
        else(sleepMode == 1){
-        sleepMode = 0;
         SMCR |= (0<<SE) | (0<<SM1) | (0<<SM0); // SMCR sleepmodecontrolregister, SM1&SM0 == Power-Save
+        PRR |= (0<<PRSPI) | (0<<PRADC); // extra power reduction throur PRR, adc and spi turn on again
+        sleepMode = 0;
        }
     }
     prell = 255; // Setze Prellzeit auf 255 Taktzyklen entspricht 1 sek
@@ -96,6 +98,7 @@ void main(){
     WDTCSR = (1 << WDIE) | (1 << WDE) | (1 << WDP3) | (1 << WDP0); // WDT auf 20 Sekunden einstellen
     // Watchdog-Interrupt aktivieren
     WDTCR |= (1 << WDIE);
+    PRR |= (1<<TWI) | (1<<PRUSART0) | (1<<PRTIM0) | (1<<PRTIM1); // Power Reduction Register turns of TWI,timer0/1,usart by initialisation
     sei();
 
     }
