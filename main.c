@@ -11,6 +11,9 @@ volatile uint8_t minute = 0;
 volatile uint8_t stunde = 0;
 volatile boolean countingHour = 0;
 volatile boolean countingMin = 0;
+volatile boolean sleepMode = 0;
+
+#define sleepB PB0;
 
 //isr core-functionality, isr wird 1x pro sekunde ausgelöst
 ISR(TIMER2_OVF_vect){
@@ -29,10 +32,16 @@ ISR(TIMER2_OVF_vect){
 
 ISR(INT0_vect){
     if (prell == 0) {
-        // Aktionen ausführen, wenn der Taster gedrückt wurde und Prellen beendet ist
-        // Zum Beispiel: Taster ist gedrückt
+       if(sleepMode == 0){
+        sleepMode = 1;
+        SMCR |= (1<<SE) | (1<<SM1) | (1<<SM0); // SMCR sleepmodecontrolregister, SM1&SM0 == Power-Save
+       }
+       else(sleepMode == 1){
+        sleepMode = 0;
+        SMCR |= (0<<SE) | (0<<SM1) | (0<<SM0); // SMCR sleepmodecontrolregister, SM1&SM0 == Power-Save
+       }
     }
-    prell = 180; // Setze Prellzeit auf 180 Taktzyklen entspricht 2/3 sek
+    prell = 255; // Setze Prellzeit auf 255 Taktzyklen entspricht 1 sek
 }
 
 ISR(INT1_vect){
@@ -48,7 +57,7 @@ ISR(INT1_vect){
             minute = 0;
         }
     }
-    prell = 180; // Setze Prellzeit auf 180 Taktzyklen entspricht 2/3 sek
+    prell = 90; // Setze Prellzeit auf 90 Taktzyklen entspricht 1/3 sek
 }
 
 ISR(WDT_vect) {
@@ -70,6 +79,9 @@ ISR(EE_READY_vect){
 
 
 void main(){
+
+    void initialisieren(){
+
     TCCR2A = (1 << WGM21); 
     TCCR2B = (1 << CS22) | (1 << CS21);     //ps=256, Timer 2, (32,768 kHz = 32768/128*256 = 1 1/s == 1s)
     OCR2A = 124; // 125-1
@@ -86,11 +98,14 @@ void main(){
     WDTCR |= (1 << WDIE);
     sei();
 
+    }
+
     while(1){
     
     wdt_reset();
     void entprellen();
     void tage();
+    void displayTime();
 
     }
 }

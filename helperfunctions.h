@@ -1,20 +1,33 @@
+volatile uint8_t tag;
+uint8_t monate[] = { 31,28,31,30,31,30, 31, 31, 30, 31, 30, 31 };
+uint8_t monate_schalt[] = { 31,29,31,30,31,30, 31, 31, 30, 31, 30, 31 };
+uint8_t jahr = 2024;
+uint8_t aktuellermonat = 3;
 
-  void entprellen() {
+void entprellen() {
     if (prell > 0) {
         prell--; // Dekrementiere Prellvariable
     }
-    }
+}
 
-void monate(){
-    //Funktion für Monate und Jahre
+void tage(){
+        if (stunde>=24){
+            tag++;
+            stunde=0;
+            void monatjahr();
+            //eeprom write stunde,  read tag, aktuellermonat, jahr == nicht ändern, ansonsten write tag, aktuellermonat, jahr
+        }
+}
+
+void monatjahr(){
+        //Funktion für Monate und Jahre
         if (jahr % 4 == 0) {
-            if (tag >= monate_schalt[aktuellermonat]) {
-            tag = 0;
+            if (tag > monate_schalt[aktuellermonat]) {
+            tag = 1;
             aktuellermonat++;
-            if (aktuellermonat >= sizeof(monate_schalt)) {
-                aktuellermonat = 0;
+            if (aktuellermonat > sizeof(monate_schalt)) {
+                aktuellermonat = 1;
                 jahr++;
-                // ISR für EEPROM-Lese-/Schreiboperationen
             }
         }
         } else {
@@ -24,19 +37,20 @@ void monate(){
             if (aktuellermonat >= sizeof(monate)) {
                 aktuellermonat = 0;
                 jahr++;
-                // ISR für EEPROM-Lese-/Schreiboperationen
             }
             }
         }
 }
 
+void displayTime(){
 
-void init_PWM() {
-    // PWM mit TC2 an Pin 17 (OC2A an PORTB,3):
-    TCCR2A = (1 << COM2A1) | (1 << WGM21) | (1 << WGM20); // Nicht-invertierter Modus, Fast PWM
-    TCCR2B = (1 << CS22) | (1 << CS21); // Prescaler /256, resultiert in einer PWM-Frequenz von 1 Hz
-}
+    if(sleepMode == 0){
+        // display minute and hour uint8_t in led 
 
-void set_LED_PWM(uint8_t brightness) {
-    OCR2A = brightness; // für PWM
+
+    }
+    else{
+     
+    }
+
 }
