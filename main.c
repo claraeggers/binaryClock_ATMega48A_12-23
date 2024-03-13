@@ -9,11 +9,9 @@ volatile uint8_t prell = 0;
 volatile uint8_t sekunde = 0;
 volatile uint8_t minute = 0;
 volatile uint8_t stunde = 0;
-volatile boolean countingHour = 0;
-volatile boolean countingMin = 0;
-volatile boolean sleepMode = 0;
-volatile uint8_t hourBitShiftDown = 0;
-volatile uint8_t hourBitShiftUpper = 0;
+volatile bool countingHour = 0;
+volatile bool countingMin = 0;
+volatile bool sleepMode = 0;
 
 
 #define sleepB PORTD2; //int0
@@ -118,6 +116,9 @@ void main(){
 
     void initialisieren(){
 
+    //EXT CLOCK SOURCE
+
+
     //TIMER2 OVF CTC
     TCCR2A = (1 << WGM21); 
     TCCR2B = (1 << CS22) | (1 << CS21);     //ps=256, Timer 2, (32,768 kHz = 32768/128*256 = 1 1/s == 1s)
@@ -140,6 +141,16 @@ void main(){
 
     //POWER-REDUCTION
     PRR |= (1<<TWI) | (1<<PRUSART0) | (1<<PRTIM0) | (1<<PRTIM1); // Power Reduction Register turns of TWI,timer0/1,usart by initialisation
+
+    //SET-DDR and pull-up
+    DDRC = 0b00111111; //PC0-5 als led output hour
+    DDRB = 0b00010110; //PB4 as XTAL1 output, pb1 undßb2 als led output min
+    DDRD = 0b11100000; //pd5-7 als led output hour
+    sleepB = 1;
+    hButton = 1;
+    mButton = 1
+
+
 
     sei();
 
