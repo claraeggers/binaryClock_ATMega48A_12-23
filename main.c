@@ -102,6 +102,16 @@ ISR(EE_READY_vect){
 
 }
 
+ISR(TIMER2_COMPA_vect) {
+
+    if (pwm % 5 != 0) {
+        displayTime();
+    }
+    else {
+        ledAUS();
+    }
+    pwm++;
+}
 
 void main(){
 
@@ -112,16 +122,5 @@ void main(){
     wdt_reset();
     void entprellen();
     void tage();
-
-    if(pwm<265) pwm++;
-    else{pwm=0};
-
-    for(pwm%20){
-    void displayTime();
-    }
-    else ledAus();
-    }
   
-
-    
 }

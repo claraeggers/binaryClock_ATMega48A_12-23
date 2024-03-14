@@ -57,14 +57,15 @@ void displayTime(){
 
     }
     else{
+      ledAus();
+
+    }
+}
+
+void ledAus(){
+
         PORTD |= 0b00001100;
         PORTB |= && 0b00000001;
         PORTC |= 0b00000000;
 
-    }
-        //bei einem minutenwechsel wird die Zählvariable für Button-Einstellung der Uhrzeit genullt
-        //Beim Drücken des Minute-Buttons wird die Variable auf 1 gesetzt, bei jedem weiteren drücken wird die minute hochgezählt, es gibt keine bestätigung der eingabe
-        //um eine eingabe zu bestätigen hört man auf zu drücken und bei einer vergangenen minute wird die variable wieder auf false gesetzt und die uhr kann von 0 auf gestellt werden
-        countingMin = 0;
-        countingHour = 0;
 }
