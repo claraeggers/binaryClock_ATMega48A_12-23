@@ -163,7 +163,7 @@ void initialisieren(){
     //TIMER2 OVF CTC
     TCCR2A |= (1 << WGM21); 
     TCCR2B |= (1 << CS22) | (1 << CS21);     //ps=256, Timer 2, (32,768 kHz = 32768/128*256 = 1 1/s == 1s)
-    OCR2A |= 199; //(200-1)
+    OCR2A |= 255; //(256-1)
     TIFR2 |= (1<<OCF2A) | (1<<TOV2); //flag register timer interrupt for ocie0b
     TIMSK2 |= (1<<OCIE2A) | (1<<TOIE2) ; //enable compare interrupt, //enable overflow 
 
