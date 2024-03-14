@@ -12,6 +12,11 @@ ISR(TIMER2_OVF_vect){
     sekunde++
     if(sekunde>=60){
     minute++;
+    //bei einem minutenwechsel wird die Zählvariable für Button-Einstellung der Uhrzeit genullt
+    //Beim Drücken des Minute-Buttons wird die Variable auf 1 gesetzt, bei jedem weiteren drücken wird die minute hochgezählt, es gibt keine bestätigung der eingabe
+    //um eine eingabe zu bestätigen hört man auf zu drücken und bei einer vergangenen minute wird die variable wieder auf false gesetzt und die uhr kann von 0 auf gestellt werden
+    countingMin = 0;
+    countingHour = 0;
     sekunde = 0;
     }
     if(minute>=60){
@@ -107,8 +112,16 @@ void main(){
     wdt_reset();
     void entprellen();
     void tage();
+
+    if(pwm<265) pwm++;
+    else{pwm=0};
+
+    for(pwm%20){
     void displayTime();
+    }
+    else ledAus();
+    }
   
 
-    }
+    
 }

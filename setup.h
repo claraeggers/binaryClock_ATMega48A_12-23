@@ -4,6 +4,7 @@ volatile uint8_t watchdog = 0;
 volatile uint8_t prellS = 0;
 volatile uint8_t prellM = 0;
 volatile uint8_t prellH = 0;
+volatile uint8_t pwm 0;
 volatile uint8_t sekunde = 0;
 volatile uint8_t minute = 0;
 volatile uint8_t stunde = 0;
@@ -57,7 +58,7 @@ bool isSchalt = 1;
     //POWER-REDUCTION
     PRR |= (1<<TWI) | (1<<PRUSART0) | (1<<PRTIM0) | (1<<PRTIM1); // Power Reduction Register turns of TWI,timer0/1,usart by initialisation
 
-    //SET-DDR and pull-up
+    //DDR and PULL-UP
     DDRC = 0b00111111; //PC0-5 als led output hourLED
     DDRB = 0b00010110; //PB4 als XTAL1 output, pb1 und b2 als led output minLED
     DDRD = 0b11100000; //pd5-7 als led output hourLED
@@ -67,7 +68,7 @@ bool isSchalt = 1;
     mButton = 1
 
 
-
+    //GLOBAL
     sei();
 
 }
