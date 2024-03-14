@@ -22,11 +22,11 @@ volatile bool countingHour = 0;
 volatile bool countingMin = 0;
 uint8_t hourBitShiftDown = 0;
 uint8_t hourBitShiftUp = 0;
-uint8_t tag = 0;
-uint8_t monate[] = { 31,28,31,30,31,30, 31, 31, 30, 31, 30, 31 };
-uint8_t monate_schalt[] = { 31,29,31,30,31,30, 31, 31, 30, 31, 30, 31 };
+uint8_t tag = 22;
+uint8_t monat = 3;
 uint16_t jahr = 2024;
-uint8_t aktuellermonat = 3;
+uint8_t monate[] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+uint8_t monate_schalt[] = { 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
 bool isSchalt = 1;
 
 //isr core-functionality, isr wird 1x pro sekunde ausgelöst
@@ -126,7 +126,7 @@ ISR(EE_READY_vect){
 //PWM CTC
 ISR(TIMER2_COMPA_vect) {
 
-    if (pwm % 5 != 0) {
+    if (pwm % 2 != 0) {
         ledAN();
     }
     else {
@@ -145,7 +145,7 @@ void tage();
 void main(){
 
     void initialisieren();
-    
+
     while(1){
     
         wdt_reset();
@@ -163,7 +163,7 @@ void initialisieren(){
     //TIMER2 OVF CTC
     TCCR2A |= (1 << WGM21); 
     TCCR2B |= (1 << CS22) | (1 << CS21);     //ps=256, Timer 2, (32,768 kHz = 32768/128*256 = 1 1/s == 1s)
-    OCR2A |= 255; //(256-1)
+    OCR2A |= 199; //(200-1)
     TIFR2 |= (1<<OCF2A) | (1<<TOV2); //flag register timer interrupt for ocie0b
     TIMSK2 |= (1<<OCIE2A) | (1<<TOIE2) ; //enable compare interrupt, //enable overflow 
 
@@ -213,7 +213,7 @@ void tage(){
         tag++;
         stunde=0;
         void monatjahr();
-        //eeprom write stunde,  read tag, aktuellermonat, jahr == nicht ändern, ansonsten write tag, aktuellermonat, jahr, isSchalt
+        //eeprom write stunde,  read tag, monat, jahr == nicht ändern, ansonsten write tag, monat, jahr, isSchalt
     }
 }
 
@@ -246,21 +246,21 @@ void monatjahr(){
     //Funktion für Monate und Jahre
     if (jahr % 4 == 0) {
         isSchalt = 1;
-        if (tag > monate_schalt[aktuellermonat]) {
+        if (tag > monate_schalt[monat]) {
             tag = 1;
-            aktuellermonat++;
-            if (aktuellermonat > sizeof(monate_schalt)) {
-                aktuellermonat = 1;
+            monat++;
+            if (monat > sizeof(monate_schalt)) {
+                monat = 1;
                 jahr++;
             }
         }
     } else {
-        if (tag >= monate[aktuellermonat]) {
+        if (tag >= monate[monat]) {
             isSchalt = 0;
             tag = 0;
-            aktuellermonat++;
-            if (aktuellermonat >= sizeof(monate)) {
-                aktuellermonat = 0;
+            monat++;
+            if (monat >= sizeof(monate)) {
+                monat = 0;
                 jahr++;
             }
         }
