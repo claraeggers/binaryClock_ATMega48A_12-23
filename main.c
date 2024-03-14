@@ -4,6 +4,7 @@
 #include <avr/eeprom.h>
 #include <helperfunctions.h>
 #include <setup.h>
+//#include <test.h>
 
 //isr core-functionality, isr wird 1x pro sekunde ausgelöst
 ISR(TIMER2_OVF_vect){
@@ -23,7 +24,7 @@ ISR(TIMER2_OVF_vect){
 //ISR für Sleep Button
 ISR(INT0_vect){
 
-    if (prell == 0) {
+    if (prellS == 0) {
        if(sleepMode == 0){
         SMCR |= (1<<SE) | (1<<SM1) | (1<<SM0); // SMCR sleepmodecontrolregister, SM1&SM0 == Power-Save
         PRR |= (1<<PRSPI) | (1<<PRADC); // extra power reduction throur PRR, adc and spi turnoff in power save mode
@@ -35,14 +36,14 @@ ISR(INT0_vect){
         sleepMode = 0;
        }
     }
-    prell = 255; // Setze Prellzeit auf 255 Taktzyklen entspricht 1 sek
+    prellS = 255; // Setze Prellzeit auf 255 Taktzyklen entspricht 1 sek
 
 }
 
 //ISr für StundeneinstellungsButton
 ISR(INT1_vect){
 
-    if (prell == 0) {
+    if (prellH == 0) {
         if(isCounting == 1){
             hour++;
             if(hour>=24){
@@ -54,14 +55,14 @@ ISR(INT1_vect){
             hour = 0;
         }
     }
-    prell = 90; // Setze Prellzeit auf 90 Taktzyklen entspricht 1/3 sek
+    prellH = 90; // Setze Prellzeit auf 90 Taktzyklen entspricht 1/3 sek
 
 }
 
 //ISR für Minuteneinstellung
 ISR(PCINT0_vect){
 
-    if (prell == 0) {
+    if (prellM == 0) {
         if(isCounting == 1){
             minute++;
             if(minute>=60){
@@ -73,7 +74,7 @@ ISR(PCINT0_vect){
             minute = 0;
         }
     }
-    prell = 90; // Setze Prellzeit auf 90 Taktzyklen entspricht 1/3 sek
+    prellM = 90; // Setze Prellzeit auf 90 Taktzyklen entspricht 1/3 sek
     
 }
 

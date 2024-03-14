@@ -1,7 +1,9 @@
 void initialisieren(){
 
 volatile uint8_t watchdog = 0;
-volatile uint8_t prell = 0;
+volatile uint8_t prellS = 0;
+volatile uint8_t prellM = 0;
+volatile uint8_t prellH = 0;
 volatile uint8_t sekunde = 0;
 volatile uint8_t minute = 0;
 volatile uint8_t stunde = 0;
@@ -19,15 +21,15 @@ volatile bool sleepMode = 0;
 bool isSchalt = 1;
 
 
-#define sleepB PORTD2; //int0
-#define hButton PORTD3;  //int1
-#define mButton PORTB0; //pinchange interrupt 1
-#define mLED PORTC;
-#define hLED0 PORTB1;
-#define hLED1 PORTB2;
-#define hLED2 PORTD5;
-#define hLED3 PORTD6;
-#define hLED4 PORTD7;
+#define sleepB PD2; //int0
+#define hButton PD3;  //int1
+#define mButton PB0; //pinchange interrupt 1
+#define mLED PC;
+#define hLED0 PB1;
+#define hLED1 PB2;
+#define hLED2 PD5;
+#define hLED3 PD6;
+#define hLED4 PD7;
 
     //EXT CLOCK SOURCE
 
@@ -56,10 +58,11 @@ bool isSchalt = 1;
     PRR |= (1<<TWI) | (1<<PRUSART0) | (1<<PRTIM0) | (1<<PRTIM1); // Power Reduction Register turns of TWI,timer0/1,usart by initialisation
 
     //SET-DDR and pull-up
-    DDRC = 0b00111111; //PC0-5 als led output hour
-    DDRB = 0b00010110; //PB4 as XTAL1 output, pb1 undßb2 als led output min
-    DDRD = 0b11100000; //pd5-7 als led output hour
-    sleepB = 1;
+    DDRC = 0b00111111; //PC0-5 als led output hourLED
+    DDRB = 0b00010110; //PB4 als XTAL1 output, pb1 und b2 als led output minLED
+    DDRD = 0b11100000; //pd5-7 als led output hourLED
+    //port set 1 aktiviert pull-up
+    sleepB = 1; 
     hButton = 1;
     mButton = 1
 
