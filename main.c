@@ -3,6 +3,8 @@
 #include <avr/interrupt.h>
 #include <avr/sleep.h>
 #include <avr/wdt.h>
+#include <stdbool.h>
+#include <stdio.h>
 //#include <setup.h>
 //#include <helperfunctions.h>
 //#include <test.h>
@@ -15,15 +17,15 @@ volatile uint8_t stunde = 0;
 volatile uint8_t prellS = 0;
 volatile uint8_t prellM = 0;
 volatile uint8_t prellH = 0;
-uint8_t hourBitShiftDown = 0;
-uint8_t hourBitShiftUp = 0;
 volatile bool sleepMode = 0;
 volatile bool countingHour = 0;
 volatile bool countingMin = 0;
-uint8_t = tag;
+uint8_t hourBitShiftDown = 0;
+uint8_t hourBitShiftUp = 0;
+uint8_t tag = 0;
 uint8_t monate[] = { 31,28,31,30,31,30, 31, 31, 30, 31, 30, 31 };
 uint8_t monate_schalt[] = { 31,29,31,30,31,30, 31, 31, 30, 31, 30, 31 };
-uint8_t jahr = 2024;
+uint16_t jahr = 2024;
 uint8_t aktuellermonat = 3;
 bool isSchalt = 1;
 
@@ -48,23 +50,21 @@ ISR(TIMER2_OVF_vect){
 }
 
 //ISR für Sleep Button
-ISR(INT0_vect){
-
+ISR(INT0_vect) {
     if (prellS == 0) {
-       if(sleepMode == 0){
-        SMCR |= (1<<SE) | (1<<SM1) | (1<<SM0); // SMCR sleepmodecontrolregister, SM1&SM0 == Power-Save
-        PRR |= (1<<PRSPI) | (1<<PRADC); // extra power reduction throur PRR, adc and spi turnoff in power save mode
-        sleepMode = 1;
-       }
-       else(sleepMode == 1){
-        SMCR |= (0<<SE) | (0<<SM1) | (0<<SM0); // SMCR sleepmodecontrolregister, SM1&SM0 == Power-Save
-        PRR |= (0<<PRSPI) | (0<<PRADC); // extra power reduction throur PRR, adc and spi turn on again
-        sleepMode = 0;
-       }
+        if (sleepMode == 0) {
+            SMCR |= (1 << SE) | (1 << SM1) | (1 << SM0); // SMCR sleepmodecontrolregister, SM1&SM0 == Power-Save
+            PRR |= (1 << PRSPI) | (1 << PRADC); // extra power reduction throur PRR, adc and spi turnoff in power save mode
+            sleepMode = 1;
+        } else {
+            SMCR |= (0 << SE) | (0 << SM1) | (0 << SM0); // SMCR sleepmodecontrolregister, SM1&SM0 == Power-Save
+            PRR |= (0 << PRSPI) | (0 << PRADC); // extra power reduction throur PRR, adc and spi turn on again
+            sleepMode = 0;
+        }
     }
     prellS = 255; // Setze Prellzeit auf 255 Taktzyklen entspricht 1 sek
-
 }
+
 
 //ISr für StundeneinstellungsButton
 ISR(INT1_vect){
@@ -127,7 +127,7 @@ ISR(EE_READY_vect){
 ISR(TIMER2_COMPA_vect) {
 
     if (pwm % 5 != 0) {
-        displayTime();
+        ledAN();
     }
     else {
         ledAUS();
@@ -135,7 +135,25 @@ ISR(TIMER2_COMPA_vect) {
     pwm++;
 }
 
+void monatjahr();
+void ledAUS();
+void ledAN();
+void enprellen();
+void initialisieren();
+void tage();
+
 void main(){
+
+    void initialisieren();
+    
+    while(1){
+    
+        wdt_reset();
+        void entprellen();
+        void tage();
+        void ledAN();
+    }
+}
 
 void initialisieren(){
 
@@ -147,23 +165,22 @@ void initialisieren(){
     TCCR2B |= (1 << CS22) | (1 << CS21);     //ps=256, Timer 2, (32,768 kHz = 32768/128*256 = 1 1/s == 1s)
     OCR2A |= 255; //(256-1)
     TIFR2 |= (1<<OCF2A) | (1<<TOV2); //flag register timer interrupt for ocie0b
-    TIMSK |= (1<<OCIE2A); //enable compare interrupt
-    TIMSK |= (1<<TOIE2); //enable overflow 
+    TIMSK2 |= (1<<OCIE2A) | (1<<TOIE2) ; //enable compare interrupt, //enable overflow 
 
     //INTERRUPTS
     EIMSK |= (1<<INT0) | (1<<INT1); // enable interupt0 and interrupt 1
     EICRA |= (1<<ISC11) | (1<<ISC01); // enable external interrupt 0/1 auf fallende flanke
-    PCICR |= (1<<PCIE0)// pin change interrupt enable for hourcounter in pcint 0-7
+    PCICR |= (1<<PCIE0); // pin change interrupt enable for hourcounter in pcint 0-7
 
     //WATCHDOG
     MCUSR &= ~(1 << WDRF); // Watchdog-Reset löschen
     wdt_disable();
-    wdt_enable(WDT0_20S);
     WDTCSR |= (1 << WDIE) | (1 << WDE) | (1 << WDP3) | (1 << WDP0); // WDT auf 20 Sekunden einstellen
-    WDTCR |= (1 << WDIE);     // Watchdog-Interrupt aktivieren
+    wdt_enable(20);
+  
 
     //POWER-REDUCTION
-    PRR |= (1<<TWI) | (1<<PRUSART0) | (1<<PRTIM0) | (1<<PRTIM1); // Power Reduction Register turns of TWI,timer0/1,usart by initialisation
+    PRR |= (1<<PRTWI) | (1<<PRUSART0) | (1<<PRTIM0) | (1<<PRTIM1); // Power Reduction Register turns of TWI,timer0/1,usart by initialisation
 
     //DDR and PULL-UP
     DDRC |= 0b00111111; //PC0-5 als led output hourLED
@@ -175,13 +192,10 @@ void initialisieren(){
 
     //GLOBAL
     sei();  
-    }
+}
 
-    while(1){
-    
-    wdt_reset();
+void entprellen() {
 
-    void entprellen() {
     if (prellM > 0) {
         prellM--; // Dekrmentiere Prellvariable
     }
@@ -191,44 +205,19 @@ void initialisieren(){
     if (prellS > 0) {
         prellS--; // Dekrementiere Prellvariable
     }
-    }
+}
 
-    void tage(){
-        if (stunde>=24){
-            tag++;
-            stunde=0;
-            void monatjahr();
-            //eeprom write stunde,  read tag, aktuellermonat, jahr == nicht ändern, ansonsten write tag, aktuellermonat, jahr, isSchalt
-        }
-    }
+void tage(){
 
-    void monatjahr(){
-    
-        //Funktion für Monate und Jahre
-        if (jahr % 4 == 0) {
-            isSchalt = 1;
-            if (tag > monate_schalt[aktuellermonat]) {
-            tag = 1;
-            aktuellermonat++;
-                if (aktuellermonat > sizeof(monate_schalt)) {
-                    aktuellermonat = 1;
-                    jahr++;
-                }
-            }
-        } else {
-            if (tag >= monate[aktuellermonat]) {
-            isSchalt = 0;
-            tag = 0;
-            aktuellermonat++;
-                if (aktuellermonat >= sizeof(monate)) {
-                    aktuellermonat = 0;
-                    jahr++;
-                }
-            }
-        }
-    }  
-    
-    void displayTime(){
+    if (stunde>=24){
+        tag++;
+        stunde=0;
+        void monatjahr();
+        //eeprom write stunde,  read tag, aktuellermonat, jahr == nicht ändern, ansonsten write tag, aktuellermonat, jahr, isSchalt
+    }
+}
+
+void ledAN(){
 
     if(sleepMode == 0){
 
@@ -237,20 +226,43 @@ void initialisieren(){
         PORTD |= (hourBitShiftDown && 0b11101100); //& mit Bitmaske, damit Pull-Up auf PD2&3 auf high bleibt
         PORTB |= (hourBitShiftUp && 0b00000111); //& mit Bitmaske, damit Pull-Up auf PB0 auf high bleibt
         PORTC |= (minute && 0b00111111);         // display minute and hour uint8_t in led mit bitmaske 
-
     }
     else{
-      ledAus();
 
-    }
-    }
-
-    void ledAus(){
-
-        PORTD |= 0b00001100;
-        PORTB |= 0b00000001;
-        PORTC |= 0b00000000;
-
-    }
+      ledAUS();
     }
 }
+
+void ledAUS(){
+
+    PORTD |= 0b00001100;
+    PORTB |= 0b00000001;
+    PORTC |= 0b00000000;
+}
+
+
+void monatjahr(){
+    
+    //Funktion für Monate und Jahre
+    if (jahr % 4 == 0) {
+        isSchalt = 1;
+        if (tag > monate_schalt[aktuellermonat]) {
+            tag = 1;
+            aktuellermonat++;
+            if (aktuellermonat > sizeof(monate_schalt)) {
+                aktuellermonat = 1;
+                jahr++;
+            }
+        }
+    } else {
+        if (tag >= monate[aktuellermonat]) {
+            isSchalt = 0;
+            tag = 0;
+            aktuellermonat++;
+            if (aktuellermonat >= sizeof(monate)) {
+                aktuellermonat = 0;
+                jahr++;
+            }
+        }
+    }
+} 
