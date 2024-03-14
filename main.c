@@ -28,6 +28,8 @@ uint16_t jahr = 2024;
 uint8_t monate[] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
 uint8_t monate_schalt[] = { 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
 bool isSchalt = 1;
+unsigned char data[];
+uint8_t uiAddress = 10;
 
 //isr core-functionality, isr wird 1x pro sekunde ausgelöst
 ISR(TIMER2_OVF_vect){
@@ -118,6 +120,7 @@ ISR(WDT_vect) {
 }
 
 //EEPROM ISR (notwendig?)
+//3,4 ms für erase und write / pro stunde : ausgleichen im durchschnitt
 ISR(EE_READY_vect){
 
 
@@ -144,14 +147,14 @@ void tage();
 
 void main(){
 
-    void initialisieren();
+    initialisieren();
 
     while(1){
     
         wdt_reset();
-        void entprellen();
-        void tage();
-        void ledAN();
+        entprellen();
+        tage();
+        ledAN();
     }
 }
 
@@ -162,7 +165,7 @@ void initialisieren(){
 
     //TIMER2 OVF CTC
     TCCR2A |= (1 << WGM21); 
-    TCCR2B |= (1 << CS22) | (1 << CS21);     //ps=256, Timer 2, (32,768 kHz = 32768/128*256 = 1 1/s == 1s)
+    TCCR2B |= (1 << CS20) | (1 << CS21) | (1 << CS22);     //ps=128, Timer 2, (32,768 kHz = 32768/128*256 = 1 1/s == 1s)
     OCR2A |= 255; //(256-1)
     TIFR2 |= (1<<OCF2A) | (1<<TOV2); //flag register timer interrupt for ocie0b
     TIMSK2 |= (1<<OCIE2A) | (1<<TOIE2) ; //enable compare interrupt, //enable overflow 
@@ -189,7 +192,6 @@ void initialisieren(){
     PORTD |= 0b00000110; //SleepButton PD3, Stundenbutton PD2 pull-up
     PORTB |= 0b00000001; //MinutenButton PB0, pullup
 
-
     //GLOBAL
     sei();  
 }
@@ -213,6 +215,9 @@ void tage(){
         tag++;
         stunde=0;
         void monatjahr();
+        data = { stunde, tag, monat, jahr }
+
+
         //eeprom write stunde,  read tag, monat, jahr == nicht ändern, ansonsten write tag, monat, jahr, isSchalt
     }
 }
@@ -266,3 +271,13 @@ void monatjahr(){
         }
     }
 } 
+
+void eeprom(uint8_t uiAddress, unsigned char data){
+
+while(EECR & (1<<EEPE));
+EEAR = uiAddress;
+EEDR = ucData;
+EECR |= (1<<EEMPE);
+EECR |= (1<<EEPE);
+
+}
