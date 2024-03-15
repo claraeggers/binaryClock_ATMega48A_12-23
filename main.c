@@ -28,8 +28,6 @@ uint16_t jahr = 2024;
 uint8_t monate[] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
 uint8_t monate_schalt[] = { 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
 bool isSchalt = 1;
-unsigned char data[];
-uint8_t uiAddress = 10;
 
 //isr core-functionality, isr wird 1x pro sekunde ausgelöst
 ISR(TIMER2_OVF_vect){
@@ -130,33 +128,22 @@ ISR(EE_READY_vect){
 ISR(TIMER2_COMPA_vect) {
 
     if (pwm % 2 != 0) {
-        ledAN();
+            if(sleepMode == 0){
+
+        hourBitShiftDown = ( stunde << 5); //Logik von 000xxxxx StundenByte für x = 0 oder 1 sollen die unteren 3 BITs auf PORTD5-7 angezeigt werden, shift um 5
+        hourBitShiftUp = ( (stunde >> 2) && 0b00000110); //Logig von 000xxxxx Stundenbyte fpr x = 0 oder 1 sollen bit 3 und bit 4 alleine aif PB1 und PB" stehen, dafür linksshift um 2 und bitmaske fürpb0
+        PORTD |= (hourBitShiftDown && 0b11101100); //& mit Bitmaske, damit Pull-Up auf PD2&3 auf high bleibt
+        PORTB |= (hourBitShiftUp && 0b00000111); //& mit Bitmaske, damit Pull-Up auf PB0 auf high bleibt
+        PORTC |= (minute && 0b00111111);         // display minute and hour uint8_t in led mit bitmaske 
+    }
     }
     else {
-        ledAUS();
-    }
+    PORTD |= 0b00001100;
+    PORTB |= 0b00000001;
+    PORTC |= 0b00000000;    }
     pwm++;
 }
 
-void monatjahr();
-void ledAUS();
-void ledAN();
-void enprellen();
-void initialisieren();
-void tage();
-
-void main(){
-
-    initialisieren();
-
-    while(1){
-    
-        wdt_reset();
-        entprellen();
-        tage();
-        ledAN();
-    }
-}
 
 void initialisieren(){
 
@@ -165,7 +152,7 @@ void initialisieren(){
 
     //TIMER2 OVF CTC
     TCCR2A |= (1 << WGM21); 
-    TCCR2B |= (1 << CS20) | (1 << CS21) | (1 << CS22);     //ps=128, Timer 2, (32,768 kHz = 32768/128*256 = 1 1/s == 1s)
+    TCCR2B |= (1 << CS20) | (1 << CS22);     //ps=128, Timer 2, (32,768 kHz = 32768/128*256 = 1 1/s == 1s)
     OCR2A |= 255; //(256-1)
     TIFR2 |= (1<<OCF2A) | (1<<TOV2); //flag register timer interrupt for ocie0b
     TIMSK2 |= (1<<OCIE2A) | (1<<TOIE2) ; //enable compare interrupt, //enable overflow 
@@ -181,7 +168,6 @@ void initialisieren(){
     WDTCSR |= (1 << WDIE) | (1 << WDE) | (1 << WDP3) | (1 << WDP0); // WDT auf 20 Sekunden einstellen
     wdt_enable(20);
   
-
     //POWER-REDUCTION
     PRR |= (1<<PRTWI) | (1<<PRUSART0) | (1<<PRTIM0) | (1<<PRTIM1); // Power Reduction Register turns of TWI,timer0/1,usart by initialisation
 
@@ -198,13 +184,13 @@ void initialisieren(){
 
 void entprellen() {
 
-    if (prellM > 0) {
+    while(prellM > 0) {
         prellM--; // Dekrmentiere Prellvariable
     }
-    if (prellH > 0) {
+    while(prellH > 0) {
         prellH--; // Dekrementiere Prellvariable
     }
-    if (prellS > 0) {
+    while(prellS > 0) {
         prellS--; // Dekrementiere Prellvariable
     }
 }
@@ -215,34 +201,9 @@ void tage(){
         tag++;
         stunde=0;
         void monatjahr();
-        data = { stunde, tag, monat, jahr }
-
 
         //eeprom write stunde,  read tag, monat, jahr == nicht ändern, ansonsten write tag, monat, jahr, isSchalt
     }
-}
-
-void ledAN(){
-
-    if(sleepMode == 0){
-
-        hourBitShiftDown = ( stunde << 5); //Logik von 000xxxxx StundenByte für x = 0 oder 1 sollen die unteren 3 BITs auf PORTD5-7 angezeigt werden, shift um 5
-        hourBitShiftUp = ( (stunde >> 2) && 0b00000110); //Logig von 000xxxxx Stundenbyte fpr x = 0 oder 1 sollen bit 3 und bit 4 alleine aif PB1 und PB" stehen, dafür linksshift um 2 und bitmaske fürpb0
-        PORTD |= (hourBitShiftDown && 0b11101100); //& mit Bitmaske, damit Pull-Up auf PD2&3 auf high bleibt
-        PORTB |= (hourBitShiftUp && 0b00000111); //& mit Bitmaske, damit Pull-Up auf PB0 auf high bleibt
-        PORTC |= (minute && 0b00111111);         // display minute and hour uint8_t in led mit bitmaske 
-    }
-    else{
-
-      ledAUS();
-    }
-}
-
-void ledAUS(){
-
-    PORTD |= 0b00001100;
-    PORTB |= 0b00000001;
-    PORTC |= 0b00000000;
 }
 
 
@@ -272,12 +233,16 @@ void monatjahr(){
     }
 } 
 
-void eeprom(uint8_t uiAddress, unsigned char data){
 
-while(EECR & (1<<EEPE));
-EEAR = uiAddress;
-EEDR = ucData;
-EECR |= (1<<EEMPE);
-EECR |= (1<<EEPE);
 
+void main(){
+
+    initialisieren();
+
+    while(1){
+    
+        wdt_reset();
+        entprellen();
+        tage();
+    }
 }
