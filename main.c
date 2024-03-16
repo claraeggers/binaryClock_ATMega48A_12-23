@@ -9,8 +9,8 @@
 volatile uint8_t watchdog = 0;
 volatile uint8_t pwm = 0;
 volatile uint8_t sekunde = 0;
-volatile uint8_t minute = 0;
-volatile uint8_t stunde = 0;
+volatile uint8_t minute = 3;
+volatile uint8_t stunde = 3;
 volatile uint8_t prellS = 0;
 volatile uint8_t prellM = 0;
 volatile uint8_t prellH = 0;
@@ -129,16 +129,16 @@ ISR(TIMER2_COMPA_vect) {
 
             hourBitShiftDown = ( stunde << 5); //Logik von 000xxxxx StundenByte für x = 0 oder 1 sollen die unteren 3 BITs auf PORTD5-7 angezeigt werden, shift um 5
             hourBitShiftUp = ( (stunde >> 2) && 0b00000110); //Logig von 000xxxxx Stundenbyte fpr x = 0 oder 1 sollen bit 3 und bit 4 alleine aif PB1 und PB" stehen, dafür linksshift um 2 und bitmaske fürpb0
-            PORTD |= (hourBitShiftDown && 0b11101100); //& mit Bitmaske, damit Pull-Up auf PD2&3 auf high bleibt
-            PORTB |= (hourBitShiftUp && 0b00000111); //& mit Bitmaske, damit Pull-Up auf PB0 auf high bleibt
-            PORTC |= (minute && 0b00111111);         // display minute and hour uint8_t in led mit bitmaske 
+            PORTD = (hourBitShiftDown && 0b11101100); //& mit Bitmaske, damit Pull-Up auf PD2&3 auf high bleibt
+            PORTB = (hourBitShiftUp && 0b00000111); //& mit Bitmaske, damit Pull-Up auf PB0 auf high bleibt
+            PORTC = (minute && 0b00111111);         // display minute and hour uint8_t in led mit bitmaske 
         }
     }
     else {
 
-        PORTD |= (0b00001100);
-        PORTB |= (0b00000001);
-        PORTC |= (0b00000000);    
+        PORTD = (0b00001100);
+        PORTB = (0b00000001);
+        PORTC = (0b00000000);    
     }
     pwm++;
 }
@@ -194,9 +194,9 @@ void entprellen(uint8_t prellM, uint8_t prellH, uint8_t prellS) {
     }
 }
 
-uint8_t tage(uint8_t stunde stunde*){
+uint8_t tage(uint8_t tag, volatile uint8_t *stunde){
 
-    if (stunde>=24){
+    if (*stunde>=24){
         tag++;
         //eeprom write stunde,  read tag, monat, jahr == nicht ändern, ansonsten write tag, monat, jahr, isSchalt
     }
@@ -238,9 +238,9 @@ void main(){
     while(1){
     
         wdt_reset();
-        void entprellen(uint8_t prellM, uint8_t prellH, uint8_t prellS);
-        uint8_t tage(uint8_t stunde);
-        Datum monatjahr(uint8_t tag);
+        entprellen(prellM, prellH, prellS);
+        tage(datum.tag, &stunde);
+        monatjahr(datum.tag, &datum);
 
     }
 }
