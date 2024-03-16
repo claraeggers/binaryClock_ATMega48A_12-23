@@ -14,9 +14,9 @@ volatile uint8_t stunde = 0;
 volatile uint8_t prellS = 0;
 volatile uint8_t prellM = 0;
 volatile uint8_t prellH = 0;
-volatile bool sleepMode = 0;
-volatile bool countingHour = 0;
-volatile bool countingMin = 0;
+volatile bool sleepMode = false;
+volatile bool countingHour = false;
+volatile bool countingMin = false;
 uint8_t hourBitShiftDown = 0;
 uint8_t hourBitShiftUp = 0;
 uint8_t monate[] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
@@ -54,14 +54,14 @@ ISR(TIMER2_OVF_vect){
 //ISR für Sleep Button
 ISR(INT0_vect) {
     if (prellS == 0) {
-        if (sleepMode == 0) {
+        if (sleepMode == false) {
             SMCR |= (1 << SE) | (1 << SM1) | (1 << SM0); // SMCR sleepmodecontrolregister, SM1&SM0 == Power-Save
             PRR |= (1 << PRSPI) | (1 << PRADC); // extra power reduction throur PRR, adc and spi turnoff in power save mode
-            sleepMode = 1;
+            sleepMode = true;
         } else {
             SMCR |= (0 << SE) | (0 << SM1) | (0 << SM0); // SMCR sleepmodecontrolregister, SM1&SM0 == Power-Save
             PRR |= (0 << PRSPI) | (0 << PRADC); // extra power reduction throur PRR, adc and spi turn on again
-            sleepMode = 0;
+            sleepMode = false;
         }
     }
     prellS = 255; // Setze Prellzeit auf 255 Taktzyklen entspricht 1 sek
@@ -72,14 +72,14 @@ ISR(INT0_vect) {
 ISR(INT1_vect){
 
     if (prellH == 0) {
-        if(countingHour == 1){
+        if(countingHour == true){
             stunde++;
             if(stunde>=24){
                 stunde = 0;
             }
         }
         else{
-            countingHour = 1;
+            countingHour = true;
             stunde = 0;
         }
     }
@@ -91,14 +91,14 @@ ISR(INT1_vect){
 ISR(PCINT0_vect){
 
     if (prellM == 0) {
-        if(countingMin == 1){
+        if(countingMin == true){
             minute++;
             if(minute>=60){
                 minute = 0;
             }
         }
         else{
-            countingMin = 1;
+            countingMin = true;
             minute = 0;
         }
     }
@@ -125,7 +125,7 @@ ISR(TIMER2_COMPA_vect) {
 
     if (pwm % 2 != 0) {
             
-        if(sleepMode == 0){
+        if(sleepMode == false){
 
             hourBitShiftDown = ( stunde << 5); //Logik von 000xxxxx StundenByte für x = 0 oder 1 sollen die unteren 3 BITs auf PORTD5-7 angezeigt werden, shift um 5
             hourBitShiftUp = ( (stunde >> 2) && 0b00000110); //Logig von 000xxxxx Stundenbyte fpr x = 0 oder 1 sollen bit 3 und bit 4 alleine aif PB1 und PB" stehen, dafür linksshift um 2 und bitmaske fürpb0
