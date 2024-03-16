@@ -19,12 +19,17 @@ volatile bool countingHour = 0;
 volatile bool countingMin = 0;
 uint8_t hourBitShiftDown = 0;
 uint8_t hourBitShiftUp = 0;
-uint8_t tag = 22;
-uint8_t monat = 3;
-uint16_t jahr = 2024;
 uint8_t monate[] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
 uint8_t monate_schalt[] = { 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
-bool isSchalt = 1;
+typedef struct {
+    uint8_t tag;
+    uint8_t monat;
+    bool isSchalt;
+    uint16_t jahr;
+} Datum;
+
+Datum datum = {22, 3, true, 2024};
+
 
 //isr core-functionality, isr wird 1x pro sekunde ausgelöst
 ISR(TIMER2_OVF_vect){
@@ -119,19 +124,22 @@ ISR(WDT_vect) {
 ISR(TIMER2_COMPA_vect) {
 
     if (pwm % 2 != 0) {
-            if(sleepMode == 0){
+            
+        if(sleepMode == 0){
 
-        hourBitShiftDown = ( stunde << 5); //Logik von 000xxxxx StundenByte für x = 0 oder 1 sollen die unteren 3 BITs auf PORTD5-7 angezeigt werden, shift um 5
-        hourBitShiftUp = ( (stunde >> 2) && 0b00000110); //Logig von 000xxxxx Stundenbyte fpr x = 0 oder 1 sollen bit 3 und bit 4 alleine aif PB1 und PB" stehen, dafür linksshift um 2 und bitmaske fürpb0
-        PORTD |= (hourBitShiftDown && 0b11101100); //& mit Bitmaske, damit Pull-Up auf PD2&3 auf high bleibt
-        PORTB |= (hourBitShiftUp && 0b00000111); //& mit Bitmaske, damit Pull-Up auf PB0 auf high bleibt
-        PORTC |= (minute && 0b00111111);         // display minute and hour uint8_t in led mit bitmaske 
-    }
+            hourBitShiftDown = ( stunde << 5); //Logik von 000xxxxx StundenByte für x = 0 oder 1 sollen die unteren 3 BITs auf PORTD5-7 angezeigt werden, shift um 5
+            hourBitShiftUp = ( (stunde >> 2) && 0b00000110); //Logig von 000xxxxx Stundenbyte fpr x = 0 oder 1 sollen bit 3 und bit 4 alleine aif PB1 und PB" stehen, dafür linksshift um 2 und bitmaske fürpb0
+            PORTD |= (hourBitShiftDown && 0b11101100); //& mit Bitmaske, damit Pull-Up auf PD2&3 auf high bleibt
+            PORTB |= (hourBitShiftUp && 0b00000111); //& mit Bitmaske, damit Pull-Up auf PB0 auf high bleibt
+            PORTC |= (minute && 0b00111111);         // display minute and hour uint8_t in led mit bitmaske 
+        }
     }
     else {
-    PORTD |= (0b00001100);
-    PORTB |= (0b00000001);
-    PORTC |= (0b00000000);    }
+
+        PORTD |= (0b00001100);
+        PORTB |= (0b00000001);
+        PORTC |= (0b00000000);    
+    }
     pwm++;
 }
 
@@ -173,7 +181,7 @@ void initialisieren(){
     sei();  
 }
 
-void entprellen(uint8_t prellM, uint8_t prellH, uint8_t PrellS) {
+void entprellen(uint8_t prellM, uint8_t prellH, uint8_t prellS) {
 
     while(prellM > 0) {
         prellM--; // Dekrmentiere Prellvariable
@@ -190,42 +198,36 @@ uint8_t tage(uint8_t stunde stunde*){
 
     if (stunde>=24){
         tag++;
-        stunde=0;
         //eeprom write stunde,  read tag, monat, jahr == nicht ändern, ansonsten write tag, monat, jahr, isSchalt
     }
     return tag;
 }
 
-
-uint8_t monatjahr(uint8_t tag){
-    
+void monatjahr(uint8_t tag, Datum *datum) {
     //Funktion für Monate und Jahre
-    if (jahr % 4 == 0) {
-        isSchalt = 1;
-        if (tag > monate_schalt[monat]) {
-            tag = 1;
-            monat++;
-            if (monat > sizeof(monate_schalt)) {
-                monat = 1;
-                jahr++;
+    if (datum->jahr % 4 == 0) {
+        datum->isSchalt = true;
+        if (datum->tag > monate_schalt[datum->monat]) {
+            datum->tag = 1;
+            datum->monat++;
+            if (datum->monat >= sizeof(monate_schalt)) {
+                datum->monat = 0;
+                datum->jahr++;
             }
         }
     } else {
-        if (tag >= monate[monat]) {
-            isSchalt = 0;
-            tag = 0;
-            monat++;
-            if (monat >= sizeof(monate)) {
-                monat = 0;
-                jahr++;
+        if (tag >= monate[datum->monat]) {
+            datum->isSchalt = false;
+            datum->tag = 0;
+            datum->monat++;
+            if (datum->monat >= sizeof(monate)) {
+                datum->monat = 0;
+                datum->jahr++;
             }
         }
     }
-    return tag;
-    return monat;
-    return isSchalt;
-    return jahr;
-} 
+}
+
 
 
 
@@ -236,8 +238,9 @@ void main(){
     while(1){
     
         wdt_reset();
-        entprellen();
-        tage();
-        monatjahr();
+        void entprellen(uint8_t prellM, uint8_t prellH, uint8_t prellS);
+        uint8_t tage(uint8_t stunde);
+        Datum monatjahr(uint8_t tag);
+
     }
 }
