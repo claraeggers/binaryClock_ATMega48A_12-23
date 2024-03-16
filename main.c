@@ -5,9 +5,6 @@
 #include <avr/wdt.h>
 #include <stdbool.h>
 #include <stdio.h>
-//#include <setup.h>
-//#include <helperfunctions.h>
-//#include <test.h>
 
 volatile uint8_t watchdog = 0;
 volatile uint8_t pwm = 0;
@@ -33,18 +30,18 @@ bool isSchalt = 1;
 ISR(TIMER2_OVF_vect){
 
     sekunde++;
-    if(sekunde>=60){
+    if(sekunde>59){
     minute++;
-    //bei einem minutenwechsel wird die Zählvariable für Button-Einstellung der Uhrzeit genullt
-    //Beim Drücken des Minute-Buttons wird die Variable auf 1 gesetzt, bei jedem weiteren drücken wird die minute hochgezählt, es gibt keine bestätigung der eingabe
-    //um eine eingabe zu bestätigen hört man auf zu drücken und bei einer vergangenen minute wird die variable wieder auf false gesetzt und die uhr kann von 0 auf gestellt werden
-    countingMin = 0;
-    countingHour = 0;
     sekunde = 0;
+    countingMin = 0;     //bei einem minutenwechsel wird die Zählvariable für Button-Einstellung der Uhrzeit genullt. Beim Drücken des Minute-Buttons wird die Variable auf 1 gesetzt, bei jedem weiteren drücken wird die minute hochgezählt, es gibt keine bestätigung der eingabe, um eine eingabe zu bestätigen hört man auf zu drücken und bei einer vergangenen minute wird die variable wieder auf false gesetzt und die uhr kann von 0 auf gestellt werden
+    countingHour = 0;
     }
-    if(minute>=60){
+    if(minute>59){
     minute = 0;
     stunde++; 
+    if(stunde>23){
+    stunde = 0;
+    }
     }
 
 }
@@ -107,7 +104,7 @@ ISR(PCINT0_vect){
 //Watchdog ISR
 ISR(WDT_vect) {
     cli(); // Interrupts deaktivieren
-    __watchdog_reset();
+    wdt_reset();
     //31*2 sek entspricht 1 min 2 sek
     if (watchdog >= 31) {
         watchdog = 0;
@@ -117,12 +114,6 @@ ISR(WDT_vect) {
     sei(); // Interrupts aktivieren
 }
 
-//EEPROM ISR (notwendig?)
-//3,4 ms für erase und write / pro stunde : ausgleichen im durchschnitt
-ISR(EE_READY_vect){
-
-
-}
 
 //PWM CTC
 ISR(TIMER2_COMPA_vect) {
@@ -138,9 +129,9 @@ ISR(TIMER2_COMPA_vect) {
     }
     }
     else {
-    PORTD |= 0b00001100;
-    PORTB |= 0b00000001;
-    PORTC |= 0b00000000;    }
+    PORTD |= (0b00001100);
+    PORTB |= (0b00000001);
+    PORTC |= (0b00000000);    }
     pwm++;
 }
 
@@ -148,7 +139,7 @@ ISR(TIMER2_COMPA_vect) {
 void initialisieren(){
 
     //EXT CLOCK SOURCE
-
+    ASSR |= (1 << AS2);
 
     //TIMER2 OVF CTC
     TCCR2A |= (1 << WGM21); 
@@ -172,17 +163,17 @@ void initialisieren(){
     PRR |= (1<<PRTWI) | (1<<PRUSART0) | (1<<PRTIM0) | (1<<PRTIM1); // Power Reduction Register turns of TWI,timer0/1,usart by initialisation
 
     //DDR and PULL-UP
-    DDRC |= 0b00111111; //PC0-5 als led output hourLED
-    DDRB |= 0b00010110; //PB4 als XTAL1 output, pb1 und b2 als led output minLED
-    DDRD |= 0b11100000; //pd5-7 als led output hourLED
-    PORTD |= 0b00000110; //SleepButton PD3, Stundenbutton PD2 pull-up
-    PORTB |= 0b00000001; //MinutenButton PB0, pullup
+    DDRC |= (1 << DDC0) | (1 << DDC1) | (1 << DDC2) | (1 << DDC3) | (1 << DDC4) | (1 << DDC5);  //PC0-5 als led output minLED
+    DDRB |= (1 << DDB1) | (1 << DDB2) | (1 << DDB4); //PB4 als XTAL1 output, pb1 und b2 als led output minLED
+    DDRD |= (1 << DDD5) | (1 << DDD6) | (1 << DDD7); //pd5-7 als led output hourLED
+    PORTD |= (0b00000110); //SleepButton PD3, Stundenbutton PD2 pull-up
+    PORTB |= (0b00000001); //MinutenButton PB0, pullup
 
     //GLOBAL
     sei();  
 }
 
-void entprellen() {
+void entprellen(uint8_t prellM, uint8_t prellH, uint8_t PrellS) {
 
     while(prellM > 0) {
         prellM--; // Dekrmentiere Prellvariable
@@ -195,19 +186,18 @@ void entprellen() {
     }
 }
 
-void tage(){
+uint8_t tage(uint8_t stunde stunde*){
 
     if (stunde>=24){
         tag++;
         stunde=0;
-        void monatjahr();
-
         //eeprom write stunde,  read tag, monat, jahr == nicht ändern, ansonsten write tag, monat, jahr, isSchalt
     }
+    return tag;
 }
 
 
-void monatjahr(){
+uint8_t monatjahr(uint8_t tag){
     
     //Funktion für Monate und Jahre
     if (jahr % 4 == 0) {
@@ -231,6 +221,10 @@ void monatjahr(){
             }
         }
     }
+    return tag;
+    return monat;
+    return isSchalt;
+    return jahr;
 } 
 
 
@@ -244,5 +238,6 @@ void main(){
         wdt_reset();
         entprellen();
         tage();
+        monatjahr();
     }
 }
