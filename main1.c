@@ -6,6 +6,8 @@
 #include <avr/sleep.h>
 #include <avr/wdt.h>
 #include <stdbool.h>
+#include <stdio.h>
+#include <util/delay.h>
 
 
 volatile uint8_t sekunde = 0;
@@ -20,6 +22,18 @@ volatile uint8_t prellM = 0;
 volatile bool countingM = false;
 volatile uint8_t prellH = 0;
 volatile bool countingH = false;
+uint8_t monate[] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+uint8_t monate_schalt[] = { 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+typedef struct {
+    uint8_t tag;
+    uint8_t monat;
+    uint16_t jahr;
+    bool isSchalt;
+} Datum;
+Datum datum = { 22, 3, 2024, true };
+volatile uint16_t wait;
+uint8_t counterstorage EEMEM = 0b10101010;
+volatile uint8_t ausgleich = 0;
 
 void pwm_fkt(volatile uint8_t pwm, volatile bool sleep_mode_on){
 
@@ -65,6 +79,72 @@ void schlafen(volatile bool sleep_mode_on){
 
 }
 
+void datum_safe(Datum datum, volatile uint8_t* stunde, volatile uint8_t* minute, volatile uint8_t* sekunde, volatile uint16_t wait,  uint8_t* counterstorage){
+
+ if(*stunde==0 && *minute==0){
+
+  if(datum.isSchalt){
+    if(datum.tag==monate_schalt[datum.monat]){
+      datum.tag = 1;
+      if(datum.monat<=12){
+        datum.monat++;
+      }
+      else{
+        datum.monat = 1;
+        datum.jahr++;
+        if(datum.jahr % 4 == 0){
+            datum.isSchalt = true;
+        }
+        else{
+            datum.isSchalt = false;
+        }
+      }
+    }  
+    else{
+    datum.tag++;
+    }
+  }
+  else{
+     if(datum.tag==monate[datum.monat]){
+      datum.tag = 1;
+      if(datum.monat<=12){
+        datum.monat++;
+      }
+      else{
+        datum.monat = 1;
+        datum.jahr++;
+        if(datum.jahr % 4 == 0){
+            datum.isSchalt = true;
+        }
+        else{
+            datum.isSchalt = false;
+        }
+      }
+    }  
+    else{
+    datum.tag++;
+    }
+  }
+/* eeprom_write_byte((counterstorage), datum.tag);
+ eeprom_write_byte((counterstorage + 1), datum.monat); // Increment address by 1 to write to the next byte
+ eeprom_write_byte((counterstorage + 2), datum.jahr);  // Increment address by 2 to write to the next byte
+
+ wait = 400;
+ //_delay_ms(3000);
+ */
+ }
+}
+
+/*
+void check(uint8_t*counterstorage, Datum datum, volatile uint8_t stunde){
+if(eeprom_read_byte(counterstorage)==datum.tag){
+PORTC=1;
+}
+else{
+PORTC=1;
+}
+}
+*/
 
 
 int main (void){
@@ -74,13 +154,13 @@ int main (void){
     ASSR |= (1 << AS2);
 
     //TIMER2 OVF CTC
-    TIMSK2 |= (1<<TOIE2) ; //enable compare interrupt, //enable overflow 
+    TIMSK2 |= (1<<TOIE2) ;  //enable overflow 
     TCCR2B |= (1 << CS20) | (1 << CS22);     //ps=128, Timer 2, (32,768 kHz = 32768/128*256 = 1 1/s == 1s)
 
     //WATCHDOG
     MCUSR &= ~(1 << WDRF); // Watchdog-Reset löschen
     wdt_disable();
-    WDTCSR |= (1 << WDIE) | (1 << WDE) | (1 << WDP3) | (1 << WDP0); // WDT auf 20 Sekunden einstellen
+    WDTCSR |= (1 << WDIE) | (1 << WDE) | (1 << WDP3) | (1 << WDP0); // WDT einstellen
     wdt_enable(WDTO_8S);
 
     //TIMER0 CTC for PWM
@@ -93,9 +173,15 @@ int main (void){
     EIMSK |= (1<<INT0) | (1<<INT1); // enable interupt0 and interrupt 1
     EICRA |= (1<<ISC11) | (1<<ISC01); // enable external interrupt 0/1 auf fallende flanke
     PCICR |= (1<<PCIE0); // pin change interrupt enable for hourcounter in pcint 0-7
+    PCMSK0 |= (1<<PCINT0); //interrupt pcint0 enable
 
     //SLEEPMODE disabled on default, but set on power_safe
     SMCR |= (0 << SE) | (1 << SM0) | (1 << SM1);
+
+    //EEPROM
+    EEARH |= 1;
+    EEARL |= 1;
+    EECR |= (1 << EERE) | (1 << EEPE) | (1 << EEMPE);
 
   
    //POWER-REDUCTION
@@ -112,12 +198,13 @@ int main (void){
     sei();  
 
 
-
    while(1){
     
     wdt_reset();
     pwm_fkt(pwm, sleep_mode_on);
     schlafen(sleep_mode_on);
+    datum_safe(datum, &stunde, &minute, &sekunde, wait, &counterstorage);
+    //check(&counterstorage, datum, stunde);
    
     }
 }
@@ -127,18 +214,28 @@ int main (void){
 //isr core-functionality, isr wird 1x pro sekunde ausgelöst
 ISR(TIMER2_OVF_vect){
 
+    sekunde++;
+   // if(sekunde==60){
+   // sekunde=0;
     minute++;
-    if(minute==60){
-    minute= 0;
-    stunde++;
-    if(stunde==24){
-    stunde = 0;
+        if(minute==60){
+        minute= 0;
+        stunde++;
+            if(stunde==24){
+            stunde = 0;
+            }
+        }   
+  //  }  
+    //1,04 sekunden pro sekundenpuls, abweichung von 0,04 
+    //1sek/0,04 = 25 entspricht alle 25 sek, sekunde--
+    ausgleich++;
+    if(ausgleich==24){
+    ausgleich = 0;
+    sekunde--;
     }
-    } 
-    
 }
 
-//CTC mit Timer0 für PWM
+//CTC mit Timer0 für PWM und zählvariablen-dekrementierung
 ISR(TIMER0_COMPA_vect){
 
     pwm++;
@@ -153,6 +250,9 @@ ISR(TIMER0_COMPA_vect){
     while(prellS > 0) {
         prellS--; // Dekrementiere Prellvariable
     }
+    while(wait > 0){
+        wait--; //Dekrementiere Wartezeit für eeprom write
+    }
 
 }
 
@@ -164,14 +264,13 @@ ISR(INT0_vect){
         if(sleep_mode_on==false){
 
         sleep_mode_on = true;
-
-        prellS = 90;
+        prellS = 220;
         }
 
         else{
 
         sleep_mode_on = false;
-        prellS = 90;
+        prellS = 220;
         }
     }
 
@@ -180,6 +279,7 @@ ISR(INT0_vect){
 
 //Stunden-Einstellen Interrupt
 ISR(INT1_vect){
+        TIMSK2 |= (0<<TOIE2) ;  //disabel overflow 
 
     if(prellH==0){
 
@@ -188,32 +288,40 @@ ISR(INT1_vect){
             if(stunde>=24){
                 stunde = 0;
             }
-            prellH=60;
+            prellH=220;
+
         }
         else{
             countingH = true;
             stunde = 0;
-            prellH = 60;
+            prellH = 220;
         }
-    }    
+    }   
+                TIMSK2 |= (1<<TOIE2) ;  //enable overflow 
+ 
 }
 
-//Minuten-Einstellen INterrupt
+//Minuten-Einstellen INterrupt (pinchange interrupt)
+
 ISR(PCINT0_vect){
 
     if(prellM==0){
 
         if(countingM == true){
+                TIMSK2 |= (0<<TOIE2) ;  //disabel overflow 
+
             minute++;
             if(minute>=60){
                 minute = 0;
             }
-            prellM=60;
+            prellM=220;
+            TIMSK2 |= (1<<TOIE2) ;  //enable overflow 
+
         }
         else{
             countingM = true;
             minute = 0;
-            prellM = 60;
+            prellM = 220;
         }
     }   
 
