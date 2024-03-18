@@ -182,7 +182,6 @@ int main (void){
     EEARL |= 1;
     EECR |= (1 << EERE) | (1 << EEPE) | (1 << EEMPE);
 
-  
    //POWER-REDUCTION
     PRR |= (1 << PRTWI) | (1 << PRUSART0) | (1 << PRTIM1); // Power Reduction Register turns of TWI,timer0/1,usart by initialisation
 
@@ -206,7 +205,6 @@ int main (void){
 
     }
 }
-
 
 
 //ISR CORE-CLOCK FUNCTIONALITY
@@ -300,7 +298,6 @@ ISR(INT1_vect){
 }
 
 //MINUTE-BUTTON-Einstellen Interrupt (pinchange interrupt)
-
 ISR(PCINT0_vect){
 
     if(prellM==0){
