@@ -7,21 +7,25 @@
 #include <avr/wdt.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <util/delay.h>
 
-
+//CLOCK
 volatile uint8_t sekunde = 0;
 volatile uint8_t minute = 0;
 volatile uint8_t stunde = 0;
+volatile uint8_t ausgleich = 0;
+//LED
+volatile uint8_t pwm = 0;
 volatile uint8_t hourBitShiftDown;
 volatile uint8_t hourBitShiftUp;
-volatile uint8_t pwm = 0;
+//SLEEP
 volatile bool sleep_mode_on = false;
+//BUTTON
 volatile uint8_t prellS = 0;
 volatile uint8_t prellM = 0;
 volatile bool countingM = false;
 volatile uint8_t prellH = 0;
 volatile bool countingH = false;
+//DATE/EEPROM
 uint8_t monate[] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
 uint8_t monate_schalt[] = { 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
 typedef struct {
@@ -31,10 +35,11 @@ typedef struct {
     bool isSchalt;
 } Datum;
 Datum datum = { 22, 3, 2024, true };
-volatile uint16_t wait;
+volatile uint8_t counter = 0;
 uint8_t counterstorage EEMEM = 0b10101010;
-volatile uint8_t ausgleich = 0;
+volatile uint16_t wait;
 
+//Funktion zum Dimmen der LED
 void pwm_fkt(volatile uint8_t pwm, volatile bool sleep_mode_on){
 
     if(sleep_mode_on == false){
@@ -62,6 +67,7 @@ void pwm_fkt(volatile uint8_t pwm, volatile bool sleep_mode_on){
     }
 }
 
+//Funktion zum Aktivieren der Sleep-Funktiion
 void schlafen(volatile bool sleep_mode_on){
 
     if(sleep_mode_on == true){
@@ -79,6 +85,7 @@ void schlafen(volatile bool sleep_mode_on){
 
 }
 
+//Funktion: Datum speichern
 void datum_safe(Datum datum, volatile uint8_t* stunde, volatile uint8_t* minute, volatile uint8_t* sekunde, volatile uint16_t wait,  uint8_t* counterstorage){
 
  if(*stunde==0 && *minute==0){
@@ -149,6 +156,7 @@ PORTC=1;
 
 int main (void){
  
+//INITIALISIERUNG
 
     //EXT CLOCK SOURCE
     ASSR |= (1 << AS2);
@@ -199,24 +207,23 @@ int main (void){
 
 
    while(1){
-    
+
     wdt_reset();
     pwm_fkt(pwm, sleep_mode_on);
     schlafen(sleep_mode_on);
-    datum_safe(datum, &stunde, &minute, &sekunde, wait, &counterstorage);
-    //check(&counterstorage, datum, stunde);
-   
+    datum_safe(datum, &stunde, &minute, &sekunde, wait, &counterstorage); 
+
     }
 }
 
 
 
-//isr core-functionality, isr wird 1x pro sekunde ausgelöst
+//ISR CORE-CLOCK FUNCTIONALITY
 ISR(TIMER2_OVF_vect){
 
     sekunde++;
-   // if(sekunde==60){
-   // sekunde=0;
+    if(sekunde==60){
+    sekunde=0;
     minute++;
         if(minute==60){
         minute= 0;
@@ -225,9 +232,8 @@ ISR(TIMER2_OVF_vect){
             stunde = 0;
             }
         }   
-  //  }  
-    //1,04 sekunden pro sekundenpuls, abweichung von 0,04 
-    //1sek/0,04 = 25 entspricht alle 25 sek, sekunde--
+    }  
+    //AUSGLEICH : 1,04 sekunden pro sekundenpuls, abweichung von 0,04 1sek/0,04 = 25 entspricht alle 25 sek, sekunde--
     ausgleich++;
     if(ausgleich==24){
     ausgleich = 0;
@@ -235,7 +241,7 @@ ISR(TIMER2_OVF_vect){
     }
 }
 
-//CTC mit Timer0 für PWM und zählvariablen-dekrementierung
+//CTC TIMER0 für PWM und zählvariablen-dekrementierung
 ISR(TIMER0_COMPA_vect){
 
     pwm++;
@@ -277,7 +283,7 @@ ISR(INT0_vect){
 
 }
 
-//Stunden-Einstellen Interrupt
+//HOUR-BUTTON Einstellen Interrupt
 ISR(INT1_vect){
     TIMSK2 |= (0<<TOIE2) ;  //disabel overflow 
 
@@ -301,7 +307,7 @@ ISR(INT1_vect){
  
 }
 
-//Minuten-Einstellen INterrupt (pinchange interrupt)
+//MINUTE-BUTTON-Einstellen Interrupt (pinchange interrupt)
 
 ISR(PCINT0_vect){
 
