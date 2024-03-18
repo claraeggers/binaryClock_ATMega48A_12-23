@@ -22,8 +22,8 @@ volatile bool sleep_mode_on = false;
 //BUTTON
 volatile uint8_t prellS = 0;
 volatile uint8_t prellM = 0;
-volatile bool countingM = false;
 volatile uint8_t prellH = 0;
+volatile bool countingM = false;
 volatile bool countingH = false;
 //DATE/EEPROM
 uint8_t monate[] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
@@ -35,11 +35,13 @@ typedef struct {
     bool isSchalt;
 } Datum;
 Datum datum = { 22, 3, 2024, true };
-volatile uint8_t counter = 0;
-uint8_t counterstorage EEMEM = 0b10101010;
-volatile uint16_t wait;
+uint8_t counterstorage0 EEMEM = 0b0;
+uint8_t counterstorage1 EEMEM = 0b10101010;
+uint8_t counterstorage2 EEMEM = 0b00001111;
+volatile uint16_t wait = 0;
 
-//Funktion zum Dimmen der LED
+
+//DIMMEN und ON/OFF der LED
 void pwm_fkt(volatile uint8_t pwm, volatile bool sleep_mode_on){
 
     if(sleep_mode_on == false){
@@ -67,13 +69,13 @@ void pwm_fkt(volatile uint8_t pwm, volatile bool sleep_mode_on){
     }
 }
 
-//Funktion zum Aktivieren der Sleep-Funktiion
+//SLEEP-FUNKTION
 void schlafen(volatile bool sleep_mode_on){
 
     if(sleep_mode_on == true){
 
     SMCR |= (1 << SE);
-    PRR |= (1<<PRADC);
+    PRR |= (1 << PRADC);
 
     }
     else{
@@ -85,10 +87,10 @@ void schlafen(volatile bool sleep_mode_on){
 
 }
 
-//Funktion: Datum speichern
-void datum_safe(Datum datum, volatile uint8_t* stunde, volatile uint8_t* minute, volatile uint8_t* sekunde, volatile uint16_t wait,  uint8_t* counterstorage){
+//DATUM SPEICHERN EEPROM
+void datum_safe(Datum datum, volatile uint8_t* stunde, volatile uint8_t* minute, volatile uint8_t* sekunde, volatile uint16_t wait,  uint8_t* counterstorage0, uint8_t* counterstorage1, uint8_t* counterstorage2){
 
- if(*stunde==0 && *minute==0){
+ if(*stunde==0 && *minute==0 && *sekunde<5 && wait==0){
 
   if(datum.isSchalt){
     if(datum.tag==monate_schalt[datum.monat]){
@@ -132,13 +134,13 @@ void datum_safe(Datum datum, volatile uint8_t* stunde, volatile uint8_t* minute,
     datum.tag++;
     }
   }
-/* eeprom_write_byte((counterstorage), datum.tag);
- eeprom_write_byte((counterstorage + 1), datum.monat); // Increment address by 1 to write to the next byte
- eeprom_write_byte((counterstorage + 2), datum.jahr);  // Increment address by 2 to write to the next byte
 
- wait = 400;
- //_delay_ms(3000);
- */
+  eeprom_read_byte (&counterstorage0, &counterstorage1, &counterstorage2);
+  eeprom_write_byte(&counterstorage0, datum.tag);
+  eeprom_update_byte(&counterstorage1, datum.monat)
+  eeprom_update_byte(&counterstorage2, datum.jahr);
+  wait = 1275;
+
  }
 }
 
@@ -162,7 +164,7 @@ int main (void){
     ASSR |= (1 << AS2);
 
     //TIMER2 OVF CTC
-    TIMSK2 |= (1<<TOIE2) ;  //enable overflow 
+    TIMSK2 |= (1 << TOIE2) ;  //enable overflow 
     TCCR2B |= (1 << CS20) | (1 << CS22);     //ps=128, Timer 2, (32,768 kHz = 32768/128*256 = 1 1/s == 1s)
 
     //WATCHDOG
@@ -172,16 +174,16 @@ int main (void){
     wdt_enable(WDTO_8S);
 
     //TIMER0 CTC for PWM
-    TCCR0B |= (1<<CS01);
+    TCCR0B |= (1 << CS01);
     OCR0A = 255;
-    TCCR0A |= (1<< WGM00);
-    TIMSK0 |= (1<<OCIE0A);
+    TCCR0A |= (1 << WGM00);
+    TIMSK0 |= (1 << OCIE0A);
 
     //SET Interrupts
-    EIMSK |= (1<<INT0) | (1<<INT1); // enable interupt0 and interrupt 1
-    EICRA |= (1<<ISC11) | (1<<ISC01); // enable external interrupt 0/1 auf fallende flanke
-    PCICR |= (1<<PCIE0); // pin change interrupt enable for hourcounter in pcint 0-7
-    PCMSK0 |= (1<<PCINT0); //interrupt pcint0 enable
+    EIMSK |= (1 << INT0) | (1 << INT1); // enable interupt0 and interrupt 1
+    EICRA |= (1 << ISC11) | (1 << ISC01); // enable external interrupt 0/1 auf fallende flanke
+    PCICR |= (1 << PCIE0); // pin change interrupt enable for hourcounter in pcint 0-7
+    PCMSK0 |= (1 << PCINT0); //interrupt pcint0 enable
 
     //SLEEPMODE disabled on default, but set on power_safe
     SMCR |= (0 << SE) | (1 << SM0) | (1 << SM1);
@@ -193,7 +195,7 @@ int main (void){
 
   
    //POWER-REDUCTION
-    PRR |= (1<<PRTWI) | (1<<PRUSART0) | (1<<PRTIM1); // Power Reduction Register turns of TWI,timer0/1,usart by initialisation
+    PRR |= (1 << PRTWI) | (1 << PRUSART0) | (1 << PRTIM1); // Power Reduction Register turns of TWI,timer0/1,usart by initialisation
 
     //SET DDR and PULL-UP
     DDRC = 0b0111111;
@@ -211,7 +213,7 @@ int main (void){
     wdt_reset();
     pwm_fkt(pwm, sleep_mode_on);
     schlafen(sleep_mode_on);
-    datum_safe(datum, &stunde, &minute, &sekunde, wait, &counterstorage); 
+    datum_safe(datum, &stunde, &minute, &sekunde, wait, &counterstorage0, &counterstorage1, &counterstorage2); 
 
     }
 }
@@ -239,6 +241,11 @@ ISR(TIMER2_OVF_vect){
     ausgleich = 0;
     sekunde--;
     }
+
+    //DEKREMENT WAITER FOR EEPROM WRITE
+    if(wait>0){
+    wait--;
+    }
 }
 
 //CTC TIMER0 für PWM und zählvariablen-dekrementierung
@@ -256,10 +263,6 @@ ISR(TIMER0_COMPA_vect){
     while(prellS > 0) {
         prellS--; // Dekrementiere Prellvariable
     }
-    while(wait > 0){
-        wait--; //Dekrementiere Wartezeit für eeprom write
-    }
-
 }
 
 //SLEEP Taster interrupt
