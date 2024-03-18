@@ -279,7 +279,7 @@ ISR(INT0_vect){
 
 //Stunden-Einstellen Interrupt
 ISR(INT1_vect){
-        TIMSK2 |= (0<<TOIE2) ;  //disabel overflow 
+    TIMSK2 |= (0<<TOIE2) ;  //disabel overflow 
 
     if(prellH==0){
 
@@ -297,7 +297,7 @@ ISR(INT1_vect){
             prellH = 220;
         }
     }   
-                TIMSK2 |= (1<<TOIE2) ;  //enable overflow 
+    TIMSK2 |= (1<<TOIE2) ;  //enable overflow 
  
 }
 
