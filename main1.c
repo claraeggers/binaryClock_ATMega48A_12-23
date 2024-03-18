@@ -178,23 +178,45 @@ ISR(INT0_vect){
 
 }
 
+//Stunden-Einstellen Interrupt
 ISR(INT1_vect){
 
     if(prellH==0){
 
         if(countingH == true){
-            minute++;
-            if(minute>=60){
-                minute = 0;
+            stunde++;
+            if(stunde>=24){
+                stunde = 0;
             }
-            prellH=30;
+            prellH=60;
         }
         else{
             countingH = true;
-            minute = 0;
-            prellH=30;
+            stunde = 0;
+            prellH = 60;
         }
     }    
 }
 
+//Minuten-Einstellen INterrupt
+ISR(PCINT0_vect){
+
+    if(prellM==0){
+
+        if(countingM == true){
+            minute++;
+            if(minute>=60){
+                minute = 0;
+            }
+            prellM=60;
+        }
+        else{
+            countingM = true;
+            minute = 0;
+            prellM = 60;
+        }
+    }   
+
+
 }
+
