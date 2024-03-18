@@ -144,17 +144,6 @@ void datum_safe(Datum datum, volatile uint8_t* stunde, volatile uint8_t* minute,
  }
 }
 
-/*
-void check(uint8_t*counterstorage, Datum datum, volatile uint8_t stunde){
-if(eeprom_read_byte(counterstorage)==datum.tag){
-PORTC=1;
-}
-else{
-PORTC=1;
-}
-}
-*/
-
 
 int main (void){
  
