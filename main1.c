@@ -13,12 +13,13 @@ volatile uint8_t minute = 0;
 volatile uint8_t stunde = 0;
 volatile uint8_t hourBitShiftDown;
 volatile uint8_t hourBitShiftUp;
-volatile uint8_t prell = 0;
 volatile uint8_t pwm = 0;
 volatile bool sleep_mode_on = false;
 volatile uint8_t prellS = 0;
 volatile uint8_t prellM = 0;
+volatile bool countingM = false;
 volatile uint8_t prellH = 0;
+volatile bool countingH = false;
 
 void pwm_fkt(volatile uint8_t pwm, volatile bool sleep_mode_on){
 
@@ -47,14 +48,23 @@ void pwm_fkt(volatile uint8_t pwm, volatile bool sleep_mode_on){
     }
 }
 
-void sleep(volatile bool sleep_mode_on){
+void schlafen(volatile bool sleep_mode_on){
 
-    while(sleep_mode_on == true){
-    
-    set_sleep_mode(SLEEP_MODE_PWR_SAVE);
-    sleep_mode();
+    if(sleep_mode_on == true){
+
+    SMCR |= (1 << SE);
+    PRR |= (1<<PRADC);
+
     }
+    else{
+
+    SMCR |= (0 << SE);
+    PRR |= (0 << PRADC);
+
+    }
+
 }
+
 
 
 int main (void){
@@ -84,11 +94,12 @@ int main (void){
     EICRA |= (1<<ISC11) | (1<<ISC01); // enable external interrupt 0/1 auf fallende flanke
     PCICR |= (1<<PCIE0); // pin change interrupt enable for hourcounter in pcint 0-7
 
-    //SLEEPMODE
+    //SLEEPMODE disabled on default, but set on power_safe
+    SMCR |= (0 << SE) | (1 << SM0) | (1 << SM1);
 
   
-    //GLOBAL
-    sei();  
+   //POWER-REDUCTION
+    PRR |= (1<<PRTWI) | (1<<PRUSART0) | (1<<PRTIM1); // Power Reduction Register turns of TWI,timer0/1,usart by initialisation
 
     //SET DDR and PULL-UP
     DDRC = 0b0111111;
@@ -97,11 +108,16 @@ int main (void){
     PORTD = 0b00001100;
     PORTB = 0b00000001;
 
+    //GLOBAL
+    sei();  
+
+
+
    while(1){
     
     wdt_reset();
     pwm_fkt(pwm, sleep_mode_on);
-    sleep(sleep_mode_on);
+    schlafen(sleep_mode_on);
    
     }
 }
@@ -125,8 +141,18 @@ ISR(TIMER2_OVF_vect){
 //CTC mit Timer0 für PWM
 ISR(TIMER0_COMPA_vect){
 
-pwm++;
-if(pwm>=200)pwm=0;
+    pwm++;
+    if(pwm>=200)pwm=0;
+
+    while(prellM > 0) {
+        prellM--; // Dekrmentiere Prellvariable
+    }
+    while(prellH > 0) {
+        prellH--; // Dekrementiere Prellvariable
+    }
+    while(prellS > 0) {
+        prellS--; // Dekrementiere Prellvariable
+    }
 
 }
 
@@ -138,18 +164,37 @@ ISR(INT0_vect){
         if(sleep_mode_on==false){
 
         sleep_mode_on = true;
+
+        prellS = 90;
         }
 
         else{
 
         sleep_mode_on = false;
+        prellS = 90;
         }
     }
-prellS = 90;
+
 
 }
 
 ISR(INT1_vect){
 
+    if(prellH==0){
+
+        if(countingH == true){
+            minute++;
+            if(minute>=60){
+                minute = 0;
+            }
+            prellH=30;
+        }
+        else{
+            countingH = true;
+            minute = 0;
+            prellH=30;
+        }
+    }    
+}
 
 }
