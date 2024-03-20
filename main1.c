@@ -134,13 +134,13 @@ void datum_safe(Datum datum, volatile uint8_t* stunde, volatile uint8_t* minute,
     datum.tag++;
     }
   }
-
+/*
   eeprom_read_byte (&counterstorage0, &counterstorage1, &counterstorage2);
   eeprom_write_byte(&counterstorage0, datum.tag);
   eeprom_update_byte(&counterstorage1, datum.monat)
   eeprom_update_byte(&counterstorage2, datum.jahr);
   wait = 1275;
-
+*/
  }
 }
 
@@ -164,7 +164,7 @@ int main (void){
 
     //TIMER0 CTC for PWM
     TCCR0B |= (1 << CS01);
-    OCR0A = 255;
+    OCR0A = 20;
     TCCR0A |= (1 << WGM00);
     TIMSK0 |= (1 << OCIE0A);
 
@@ -210,8 +210,8 @@ int main (void){
 //ISR CORE-CLOCK FUNCTIONALITY
 ISR(TIMER2_OVF_vect){
 
-    sekunde++;
-    if(sekunde==60){
+    //sekunde++;
+   // if(sekunde==60){
     sekunde=0;
     minute++;
         if(minute==60){
@@ -221,7 +221,7 @@ ISR(TIMER2_OVF_vect){
             stunde = 0;
             }
         }   
-    }  
+   // }  
     //AUSGLEICH : 1,04 sekunden pro sekundenpuls, abweichung von 0,04 1sek/0,04 = 25 entspricht alle 25 sek, sekunde--
     ausgleich++;
     if(ausgleich==24){
