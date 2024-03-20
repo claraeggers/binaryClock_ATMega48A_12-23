@@ -74,13 +74,17 @@ void schlafen(volatile bool sleep_mode_on){
 
     if(sleep_mode_on == true){
 
-    SMCR |= (1 << SE);
+    set_sleep_mode(2);
+    sleep_enable();
+    sleep_cpu();
+    SMCR |= (1 << SE) | (1 << SM0) | (1 << SM1);
     PRR |= (1 << PRADC);
-
     }
+
     else{
 
-    SMCR |= (0 << SE);
+    sleep_disable();
+    SMCR |= (0 << SE) | (1 << SM0) | (1 << SM1);
     PRR |= (0 << PRADC);
 
     }
