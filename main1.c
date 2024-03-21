@@ -43,11 +43,11 @@ typedef struct {
 Datum datum = { 22, 3, 2024, true };
 uint8_t counterstorage0 EEMEM = 0b10101010;
 uint8_t counterstorage1 EEMEM = 0b10100000;
-volatile uint8_t aktueller_tag = 22;
-volatile uint8_t aktueller_monat = 3;
+volatile uint8_t aktueller_tag = 0;
+volatile uint8_t aktueller_monat = 0;
 volatile uint8_t pause = 0;
 
-
+//Write when there is an update in MONTH od DAY
 void eeprom_write_byte(uint8_t *address, uint8_t value) {
     eeprom_update_byte(address, value);
 }
@@ -57,7 +57,7 @@ void pwm_fkt(volatile uint8_t pwm, volatile bool sleep_mode_on){
 
     if(sleep_mode_on == false){
 
-        if(pwm%5){
+        if(pwm%15){
 
          PORTD = 0b00001101;
          PORTB = 0b00000001;  
@@ -104,7 +104,7 @@ void schlafen(volatile bool sleep_mode_on){
 }
 
 //DATUM SPEICHERN EEPROM
-void datum_safe(Datum datum, volatile uint8_t* stunde, volatile uint8_t* minute, volatile uint8_t* sekunde, uint8_t* counterstorage0, uint8_t* counterstorage1){
+void datum_safe(Datum datum){
 
   if(datum.isSchalt){
     if(datum.tag==monate_schalt[datum.monat]){
@@ -147,10 +147,7 @@ void datum_safe(Datum datum, volatile uint8_t* stunde, volatile uint8_t* minute,
     else{
     datum.tag++;
     }
-  }
-
-
- 
+  } 
 }
 
 
@@ -172,9 +169,7 @@ int main (void){
     wdt_enable(WDTO_2S);
 
     //TIMER0 CTC for PWM
-    TCCR0B |= (1 << CS01);   //Prescaler 8 (8000000/(256*8) = 3096,25 Hz
-    OCR0A = 20;              //Ausgabevergleichsregister für Timer 0 (pwm)
-    TCCR0A |= (1 << WGM00);  //CTC mglw überflüssig
+    TCCR0B |=(1 << CS00);   //Prescaler 8 (8000000/(256*8) = 3096,25 Hz
     TIMSK0 |= (1 << OCIE0A); //compare-Match-Interrupt Timer0
 
     //SET Interrupts
@@ -212,8 +207,8 @@ int main (void){
     pwm_fkt(pwm, sleep_mode_on);
     }
     schlafen(sleep_mode_on);
-    datum_safe(datum, &stunde, &minute, &sekunde, &counterstorage0, &counterstorage1); 
-    eeprom_update_byte(&counterstorage0, datum.tag);
+    datum_safe(datum); 
+    eeprom_write_byte(&counterstorage0, datum.tag);
     eeprom_write_byte(&counterstorage1, datum.monat);
     }
 }
