@@ -27,6 +27,7 @@ volatile bool sleep_mode_on = false;
 volatile uint8_t prellS = 0;
 volatile uint8_t prellM = 0;
 volatile uint8_t prellH = 0;
+volatile uint8_t prellE = 0;
 volatile bool countingM = false;
 volatile bool countingH = false;
 
@@ -40,14 +41,16 @@ typedef struct {
     bool isSchalt;
 } Datum;
 Datum datum = { 22, 3, 2024, true };
-uint8_t counterstorage0 EEMEM = 0b0;
-uint8_t counterstorage1 EEMEM = 0b10101010;
-uint16_t counterstorage2 EEMEM = 0b00001111;
-uint8_t aktueller_tag = 22;
-uint8_t aktueller_monat = 3;
-uint16_t aktuelles_jahr = 2024;
-volatile uint16_t wait = 0;
+uint8_t counterstorage0 EEMEM = 0b10101010;
+uint8_t counterstorage1 EEMEM = 0b10100000;
+volatile uint8_t aktueller_tag = 22;
+volatile uint8_t aktueller_monat = 3;
+volatile uint8_t pause = 0;
 
+
+void eeprom_write_byte(uint8_t *address, uint8_t value) {
+    eeprom_update_byte(address, value);
+}
 
 //DIMMEN und ON/OFF der LED
 void pwm_fkt(volatile uint8_t pwm, volatile bool sleep_mode_on){
@@ -56,7 +59,7 @@ void pwm_fkt(volatile uint8_t pwm, volatile bool sleep_mode_on){
 
         if(pwm%5){
 
-         PORTD = 0b00001100;
+         PORTD = 0b00001101;
          PORTB = 0b00000001;  
          PORTC = 0b00000000;
         }
@@ -65,13 +68,14 @@ void pwm_fkt(volatile uint8_t pwm, volatile bool sleep_mode_on){
          PORTC = (minute & 0b00111111);         // display minute and hour uint8_t in led mit bitmaske  
          hourBitShiftDown = ( stunde << 5); //Logik von 000xxxxx StundenByte für x = 0 oder 1 sollen die unteren 3 BITs auf PORTD5-7 angezeigt werden, shift um 5
          hourBitShiftUp = ( (stunde >> 2) & 0b00000110); //Logig von 000xxxxx Stundenbyte fpr x = 0 oder 1 sollen bit 3 und bit 4 alleine aif PB1 und PB" stehen, dafür linksshift um 2 und bitmaske fürpb0
-         PORTD = (hourBitShiftDown & 0b11101100); //& mit Bitmaske, damit Pull-Up auf PD2&3 auf high bleibt
+         PORTD = (hourBitShiftDown & 0b11101101); //& mit Bitmaske, damit Pull-Up auf PD2&3 auf high bleibt
          PORTB = (hourBitShiftUp & 0b00000111); //& mit Bitmaske, damit Pull-Up auf PB0 auf high bleibt
+         
         }
     }
     else{
 
-     PORTD = 0b00001100;
+     PORTD = 0b00001101;
      PORTB = 0b00000001;  
      PORTC = 0b00000000;
     }
@@ -100,7 +104,7 @@ void schlafen(volatile bool sleep_mode_on){
 }
 
 //DATUM SPEICHERN EEPROM
-void datum_safe(Datum datum, volatile uint8_t* stunde, volatile uint8_t* minute, volatile uint8_t* sekunde, volatile uint16_t wait,  uint8_t* counterstorage0, uint8_t* counterstorage1, uint16_t* counterstorage2){
+void datum_safe(Datum datum, volatile uint8_t* stunde, volatile uint8_t* minute, volatile uint8_t* sekunde, uint8_t* counterstorage0, uint8_t* counterstorage1){
 
   if(datum.isSchalt){
     if(datum.tag==monate_schalt[datum.monat]){
@@ -145,14 +149,8 @@ void datum_safe(Datum datum, volatile uint8_t* stunde, volatile uint8_t* minute,
     }
   }
 
-aktueller_tag= datum.tag;
-aktueller_monat = datum.monat;
-aktuelles_jahr = datum.jahr;
-void eeprom_update_byte (uint8_t *counterstorage0, uint8_t aktueller_tag);
-void eeprom_update_byte (uint8_t *counterstorage1, uint8_t aktueller_monat);
-void eeprom_update_word (uint16_t *counterstorage2, uint16_t aktuelles_jahr);
 
- }
+ 
 }
 
 
@@ -182,8 +180,9 @@ int main (void){
     //SET Interrupts
     EIMSK |= (1 << INT0) | (1 << INT1); // enable interupt0 and interrupt 1
     EICRA |= (1 << ISC11) | (1 << ISC01); // enable external interrupt 0/1 auf fallende flanke
-    PCICR |= (1 << PCIE0); // pin change interrupt enable for hourcounter in pcint 0-7
+    PCICR |= (1 << PCIE0) | (1 << PCIE2); // pin change interrupt enable for hourcounter in pcint 0-7
     PCMSK0 |= (1 << PCINT0); //interrupt pcint0 enable
+    PCMSK2 |= (1 << PCINT16); //interrupt pcint20
 
     //SLEEPMODE disabled on default, but set on power_safe
     SMCR |= (0 << SE) | (1 << SM0) | (1 << SM1);
@@ -194,13 +193,13 @@ int main (void){
     EECR |= (1 << EERE) | (1 << EEPE) | (1 << EEMPE);
 
    //POWER-REDUCTION
-    PRR |= (1 << PRTWI) | (1 << PRUSART0) | (1 << PRTIM1); // Power Reduction Register turns of TWI,timer0/1,usart by initialisation
+    PRR |= (1 << PRTWI) | (1 << PRTIM1); // Power Reduction Register turns of TWI,timer0/1,usart by initialisation
 
     //SET DDR and PULL-UP
     DDRC = 0b0111111;
     DDRD = 0b11100000;
     DDRB = 0b00000110;
-    PORTD = 0b00001100;
+    PORTD = 0b00001101;
     PORTB = 0b00000001;
 
     //GLOBAL
@@ -209,9 +208,13 @@ int main (void){
 
    while(1){
 
+    while(pause==0){
     pwm_fkt(pwm, sleep_mode_on);
+    }
     schlafen(sleep_mode_on);
-    datum_safe(datum, &stunde, &minute, &sekunde, wait, &counterstorage0, &counterstorage1, &counterstorage2); 
+    datum_safe(datum, &stunde, &minute, &sekunde, &counterstorage0, &counterstorage1); 
+    eeprom_update_byte(&counterstorage0, datum.tag);
+    eeprom_write_byte(&counterstorage1, datum.monat);
     }
 }
 
@@ -240,15 +243,14 @@ ISR(TIMER2_OVF_vect){
     sekunde--;
     }
 
-    //DEKREMENT WAITER FOR EEPROM WRITE
-    if(wait>0){
-        wait--;
-    }
-
     //ENTPRELLEN SLEEP TASTER
     while(prellS > 0) {
         prellS--; // Dekrementiere Prellvariable
     }
+    while(pause > 0) {
+        pause--;
+    }
+
 }
 
 //CTC TIMER0 für PWM und zählvariablen-dekrementierung
@@ -262,6 +264,9 @@ ISR(TIMER0_COMPA_vect){
     }
     while(prellH > 0) {
         prellH--; // Dekrementiere Prellvariable
+    }
+        while(prellE > 0) {
+        prellE--; // Dekrementiere Prellvariable
     }
 }
 
@@ -310,6 +315,7 @@ ISR(INT1_vect){
 //MINUTE-BUTTON-Einstellen Interrupt (pinchange interrupt)
 ISR(PCINT0_vect){
 
+
     if(prellM==0){
 
         if(countingM == true){
@@ -329,5 +335,27 @@ ISR(PCINT0_vect){
             prellM = 220;
         }
     }   
+    
 }
 
+ISR(PCINT2_vect) {
+    // Daten aus dem EEPROM lesen
+    aktueller_tag = eeprom_read_byte(&counterstorage0);  // Adresse für Tag
+    aktueller_monat = eeprom_read_byte(&counterstorage1); // Adresse für Monat
+    
+    pause = 1;
+
+    // Aktualisieren der Zeit mit den EEPROM-Daten
+    PORTC |= ((0b0111111) & aktueller_tag); 
+    hourBitShiftDown = ( aktueller_monat << 5); //Logik von 000xxxxx StundenByte für x = 0 oder 1 sollen die unteren 3 BITs auf PORTD5-7 angezeigt werden, shift um 5
+    hourBitShiftUp = ( (aktueller_monat >> 2) & 0b00000110); //Logig von 000xxxxx Stundenbyte fpr x = 0 oder 1 sollen bit 3 und bit 4 alleine aif PB1 und PB" stehen, dafür linksshift um 2 und bitmaske fürpb0
+    PORTD = (hourBitShiftDown & 0b11101101); //& mit Bitmaske, damit Pull-Up auf PD2&3 auf high bleibt
+    PORTB = (hourBitShiftUp & 0b00000111); //& mit Bitmaske, damit Pull-Up auf PB0 auf high bleibt
+
+    
+    // Zurücksetzen des Prell-Timers
+    prellE = 220;
+    // Aktivierung der Zählung für die Wartezeit von 3 Sekunden
+    
+
+}
