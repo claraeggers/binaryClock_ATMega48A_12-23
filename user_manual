@@ -73,7 +73,24 @@ SOFTWARE STRUCTURE
 	Debounces other 3 buttons
 	
 	##INT0_vect
-	ISR fires when button is pressed 
+	ISR fires when button is pressed && debounce-variable equals 0 = toggles boolean sleep_mode_on
+	debounce-variable prellS is set afterwards 
+
+	##INT1_vect
+	ISR fires when button is pressed
+	if initializer countingH bool == false, it is initially set to true , afterwards every use of the button is incrementing the hour
+	countingH is set back to = false outside of the ISR
+	
+	##PCINT0_vect
+	ISR fires wgen button is pressed
+	If initializer countingM bool == false, it is initially set to true, if countingM bool == true, minute variable will be incresed
+	countingM is set back to = false after 1 min outside of the routin
+	
+	##PCINT2_vect
+	ISR fires when button is pressed
+	Sets pause-variable to 1 (pause is decreased in TIMER2_OVF ISR) , while pause is >0
+	PORTC, PORTB, PORT D display day and month fpor 1 second instead of minutes and hours
+	
 	
 
 	
