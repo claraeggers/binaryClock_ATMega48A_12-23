@@ -7,24 +7,29 @@
 #include <avr/wdt.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <avr/power.h>
 
 //CLOCK
 volatile uint8_t sekunde = 0;
 volatile uint8_t minute = 0;
 volatile uint8_t stunde = 0;
 volatile uint8_t ausgleich = 0;
+
 //LED
 volatile uint8_t pwm = 0;
 volatile uint8_t hourBitShiftDown;
 volatile uint8_t hourBitShiftUp;
+
 //SLEEP
 volatile bool sleep_mode_on = false;
+
 //BUTTON
 volatile uint8_t prellS = 0;
 volatile uint8_t prellM = 0;
 volatile uint8_t prellH = 0;
 volatile bool countingM = false;
 volatile bool countingH = false;
+
 //DATE/EEPROM
 uint8_t monate[] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
 uint8_t monate_schalt[] = { 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
@@ -37,7 +42,10 @@ typedef struct {
 Datum datum = { 22, 3, 2024, true };
 uint8_t counterstorage0 EEMEM = 0b0;
 uint8_t counterstorage1 EEMEM = 0b10101010;
-uint8_t counterstorage2 EEMEM = 0b00001111;
+uint16_t counterstorage2 EEMEM = 0b00001111;
+uint8_t aktueller_tag = 22;
+uint8_t aktueller_monat = 3;
+uint16_t aktuelles_jahr = 2024;
 volatile uint16_t wait = 0;
 
 
@@ -72,29 +80,27 @@ void pwm_fkt(volatile uint8_t pwm, volatile bool sleep_mode_on){
 //SLEEP-FUNKTION
 void schlafen(volatile bool sleep_mode_on){
 
-    if(sleep_mode_on == true){
+    if(sleep_mode_on){
 
-    set_sleep_mode(2);
-    sleep_enable();
-    sleep_cpu();
-    SMCR |= (1 << SE) | (1 << SM0) | (1 << SM1);
-    PRR |= (1 << PRADC);
+        set_sleep_mode(SLEEP_MODE_PWR_SAVE);
+        sleep_enable();
+        sleep_cpu();
+        sleep_disable();
+        power_adc_disable();
+        power_timer0_disable();
     }
 
     else{
 
-    sleep_disable();
-    SMCR |= (0 << SE) | (1 << SM0) | (1 << SM1);
-    PRR |= (0 << PRADC);
-
+        sleep_disable();
+        power_adc_enable();
+        power_timer0_enable();
     }
 
 }
 
 //DATUM SPEICHERN EEPROM
-void datum_safe(Datum datum, volatile uint8_t* stunde, volatile uint8_t* minute, volatile uint8_t* sekunde, volatile uint16_t wait,  uint8_t* counterstorage0, uint8_t* counterstorage1, uint8_t* counterstorage2){
-
- if(*stunde==0 && *minute==0 && *sekunde<5 && wait==0){
+void datum_safe(Datum datum, volatile uint8_t* stunde, volatile uint8_t* minute, volatile uint8_t* sekunde, volatile uint16_t wait,  uint8_t* counterstorage0, uint8_t* counterstorage1, uint16_t* counterstorage2){
 
   if(datum.isSchalt){
     if(datum.tag==monate_schalt[datum.monat]){
@@ -138,13 +144,14 @@ void datum_safe(Datum datum, volatile uint8_t* stunde, volatile uint8_t* minute,
     datum.tag++;
     }
   }
-/*
-  eeprom_read_byte (&counterstorage0, &counterstorage1, &counterstorage2);
-  eeprom_write_byte(&counterstorage0, datum.tag);
-  eeprom_update_byte(&counterstorage1, datum.monat)
-  eeprom_update_byte(&counterstorage2, datum.jahr);
-  wait = 1275;
-*/
+
+aktueller_tag= datum.tag;
+aktueller_monat = datum.monat;
+aktuelles_jahr = datum.jahr;
+void eeprom_update_byte (uint8_t *counterstorage0, uint8_t aktueller_tag);
+void eeprom_update_byte (uint8_t *counterstorage1, uint8_t aktueller_monat);
+void eeprom_update_word (uint16_t *counterstorage2, uint16_t aktuelles_jahr);
+
  }
 }
 
@@ -164,13 +171,13 @@ int main (void){
     MCUSR &= ~(1 << WDRF); // Watchdog-Reset löschen
     wdt_disable();
     WDTCSR |= (1 << WDIE) | (1 << WDE) | (1 << WDP3) | (1 << WDP0); // WDT einstellen
-    wdt_enable(WDTO_8S);
+    wdt_enable(WDTO_2S);
 
     //TIMER0 CTC for PWM
-    TCCR0B |= (1 << CS01);
-    OCR0A = 20;
-    TCCR0A |= (1 << WGM00);
-    TIMSK0 |= (1 << OCIE0A);
+    TCCR0B |= (1 << CS01);   //Prescaler 8 (8000000/(256*8) = 3096,25 Hz
+    OCR0A = 20;              //Ausgabevergleichsregister für Timer 0 (pwm)
+    TCCR0A |= (1 << WGM00);  //CTC mglw überflüssig
+    TIMSK0 |= (1 << OCIE0A); //compare-Match-Interrupt Timer0
 
     //SET Interrupts
     EIMSK |= (1 << INT0) | (1 << INT1); // enable interupt0 and interrupt 1
@@ -202,11 +209,9 @@ int main (void){
 
    while(1){
 
-    wdt_reset();
     pwm_fkt(pwm, sleep_mode_on);
     schlafen(sleep_mode_on);
     datum_safe(datum, &stunde, &minute, &sekunde, wait, &counterstorage0, &counterstorage1, &counterstorage2); 
-
     }
 }
 
@@ -215,9 +220,11 @@ int main (void){
 ISR(TIMER2_OVF_vect){
 
     //sekunde++;
+   // wdt_reset();
    // if(sekunde==60){
     sekunde=0;
     minute++;
+    wdt_reset();
         if(minute==60){
         minute= 0;
         stunde++;
@@ -235,7 +242,12 @@ ISR(TIMER2_OVF_vect){
 
     //DEKREMENT WAITER FOR EEPROM WRITE
     if(wait>0){
-    wait--;
+        wait--;
+    }
+
+    //ENTPRELLEN SLEEP TASTER
+    while(prellS > 0) {
+        prellS--; // Dekrementiere Prellvariable
     }
 }
 
@@ -251,9 +263,6 @@ ISR(TIMER0_COMPA_vect){
     while(prellH > 0) {
         prellH--; // Dekrementiere Prellvariable
     }
-    while(prellS > 0) {
-        prellS--; // Dekrementiere Prellvariable
-    }
 }
 
 //SLEEP Taster interrupt
@@ -264,17 +273,15 @@ ISR(INT0_vect){
         if(sleep_mode_on==false){
 
         sleep_mode_on = true;
-        prellS = 220;
+        prellS = 1;
         }
 
         else{
 
         sleep_mode_on = false;
-        prellS = 220;
+        prellS = 1;
         }
     }
-
-
 }
 
 //HOUR-BUTTON Einstellen Interrupt
@@ -283,7 +290,7 @@ ISR(INT1_vect){
 
     if(prellH==0){
 
-        if(countingH == true){
+        if(countingH){
             stunde++;
             if(stunde>=24){
                 stunde = 0;
@@ -298,7 +305,6 @@ ISR(INT1_vect){
         }
     }   
     TIMSK2 |= (1<<TOIE2) ;  //enable overflow 
- 
 }
 
 //MINUTE-BUTTON-Einstellen Interrupt (pinchange interrupt)
@@ -323,7 +329,5 @@ ISR(PCINT0_vect){
             prellM = 220;
         }
     }   
-
-
 }
 
