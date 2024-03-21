@@ -1,0 +1,80 @@
+USER MANUAL
+
+FILES  
+
+main.c		"Program Code"
+snp.sch		"KiCAD Schematic"
+
+HARDWARE STRUCTURE
+
+	#INDIVIDUAL PARTS 
+	
+	ATMega48A
+	Watch Quarz 32647kH
+	Batteryholder
+	Battery Cell 3 Volt
+	4 Button
+	11 LED
+	Cables breadboard
+	AVRISP MK2
+	AVR-GCC
+	
+	#FUNCTIONALITY
+	
+		##Buttons 
+		PORTD3	Adjusting Hours 
+		PORTD2	Enable Power_Safe
+		PORTD0	Show Date 
+		PORTB0	Adjusting Minutes 
+		
+		##LED
+		PORTC0-5 		= MINUTE LED
+		PORTB1-2 & PORTD5-7	= HOUR LED
+		
+		
+SOFTWARE STRUCTURE
+
+
+	#FUNCTIONS
+	
+	##void pwm_fkt(volatile uint8_t pwm, volatile bool sleep_mode_on)
+	Function uses pwm volatile, that is incremented with Timer0 and boolean sleep_mode_on to get information, if sleep mode is enabled
+	Function switches between LED on set to the right time and LED off to generate a software PWM for LED dimming
+	LEDs are set off, wenn sleep_mode_on == true
+	
+	##void eeprom_write_byte(uint8_t *address, uint8_t value) 
+	eeprom.h Functionality uses a reference to the address where to safe the data within the eeprom and the value to be written to the eeprom
+	the function calls "update_byte" which reads the value before writing to it, to ensure longlivity#
+	
+	##void schlafen(volatile bool sleep_mode_on)
+	Function uses boolean sleep_mode_on to switch to right mode
+	When sleep_mode_on == true, function enables PWR_SAFE mode with additional PRR
+	When sleep_mode_on == false, function disables sleep mode and enables some power-safes
+	
+	##void datum_safe(Datum datum){
+	Function uses struct Datum, consisting of {Tag, Monat, Jahr, isSchalt}
+	Function caluclates if current "Jahr" is a leap-year, if true it uses monate_schalt[]-array, if not it uses monate[]-array
+	Function increases day, if day is higher than the number of the array[month], the day is set to one and the month is increased
+	If Month is reaching 12 it is set to one and year is increased
+
+
+
+
+	
+	#ISR
+	
+	##TIMER2_OVF
+	ISR fires, when after 255 clocks the clock is set again to 0, through Prescaler 128 this equals one second
+	ISR has "ausgleich" which corrects seconds
+	ISR decreases pause and prellS, pause intervenes with pwm-led showing to show date for 1 second, prellS debounces sleep-button
+	
+	##TIMER0_COMPA_vect
+	ISR fires when compA is reached with timer 0, with no prescaler and 8MHZ internal osciallator pwm variable is increased rapidly
+	Debounces other 3 buttons
+	
+	##INT0_vect
+	ISR fires when button is pressed 
+	
+
+	
+
