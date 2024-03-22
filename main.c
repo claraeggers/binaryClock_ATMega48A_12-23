@@ -1,5 +1,4 @@
 #define F_CPU 1000000UL
-
 #include <avr/io.h>
 #include <avr/eeprom.h>
 #include <avr/interrupt.h>
@@ -47,8 +46,9 @@ volatile uint8_t aktueller_tag = 0;
 volatile uint8_t aktueller_monat = 0;
 volatile uint8_t pause = 0;
 
-//Write when there is an update in MONTH od DAY
+//UPDATE BYTE when ther is an update in MONTH od DAY
 void eeprom_write_byte(uint8_t *address, uint8_t value) {
+
     eeprom_update_byte(address, value);
 }
 
@@ -56,25 +56,20 @@ void eeprom_write_byte(uint8_t *address, uint8_t value) {
 void pwm_fkt(volatile uint8_t pwm, volatile bool sleep_mode_on){
 
     if(sleep_mode_on == false){
-
         if(pwm%15){
-
          PORTD = 0b00001101;
          PORTB = 0b00000001;  
          PORTC = 0b00000000;
         }
         else{
-
          PORTC = (minute & 0b00111111);         // display minute and hour uint8_t in led mit bitmaske  
          hourBitShiftDown = ( stunde << 5); //Logik von 000xxxxx StundenByte für x = 0 oder 1 sollen die unteren 3 BITs auf PORTD5-7 angezeigt werden, shift um 5
          hourBitShiftUp = ( (stunde >> 2) & 0b00000110); //Logig von 000xxxxx Stundenbyte fpr x = 0 oder 1 sollen bit 3 und bit 4 alleine aif PB1 und PB" stehen, dafür linksshift um 2 und bitmaske fürpb0
          PORTD = (hourBitShiftDown & 0b11101101); //& mit Bitmaske, damit Pull-Up auf PD2&3 auf high bleibt
          PORTB = (hourBitShiftUp & 0b00000111); //& mit Bitmaske, damit Pull-Up auf PB0 auf high bleibt
-         
         }
     }
     else{
-
      PORTD = 0b00001101;
      PORTB = 0b00000001;  
      PORTC = 0b00000000;
@@ -85,7 +80,6 @@ void pwm_fkt(volatile uint8_t pwm, volatile bool sleep_mode_on){
 void schlafen(volatile bool sleep_mode_on){
 
     if(sleep_mode_on){
-
         set_sleep_mode(SLEEP_MODE_PWR_SAVE);
         sleep_enable();
         sleep_cpu();
@@ -93,14 +87,11 @@ void schlafen(volatile bool sleep_mode_on){
         power_adc_disable();
         power_timer0_disable();
     }
-
     else{
-
         sleep_disable();
         power_adc_enable();
         power_timer0_enable();
     }
-
 }
 
 //DATUM SPEICHERN EEPROM
@@ -115,9 +106,7 @@ void datum_safe(Datum datum){
       else{
         datum.monat = 1;
         datum.jahr++;
-        if(datum.jahr % 4 == 0){
-            datum.isSchalt = true;
-        }
+        if(datum.jahr % 4 == 0)datum.isSchalt = true;
         else{
             datum.isSchalt = false;
         }
@@ -130,15 +119,12 @@ void datum_safe(Datum datum){
   else{
      if(datum.tag==monate[datum.monat]){
       datum.tag = 1;
-      if(datum.monat<=12){
-        datum.monat++;
-      }
+      if(datum.monat<=12)datum.monat++;
       else{
+
         datum.monat = 1;
         datum.jahr++;
-        if(datum.jahr % 4 == 0){
-            datum.isSchalt = true;
-        }
+        if(datum.jahr % 4 == 0)datum.isSchalt = true;
         else{
             datum.isSchalt = false;
         }
@@ -149,7 +135,6 @@ void datum_safe(Datum datum){
     }
   } 
 }
-
 
 int main (void){
  
@@ -203,49 +188,46 @@ int main (void){
 
    while(1){
 
-    while(pause==0){
+    if(pause==0){
     pwm_fkt(pwm, sleep_mode_on);
     }
     schlafen(sleep_mode_on);
     datum_safe(datum); 
     eeprom_write_byte(&counterstorage0, datum.tag);
     eeprom_write_byte(&counterstorage1, datum.monat);
+    wdt_reset();
     }
 }
-
 
 //ISR CORE-CLOCK FUNCTIONALITY
 ISR(TIMER2_OVF_vect){
 
-    //sekunde++;
-   // wdt_reset();
-   // if(sekunde==60){
-    sekunde=0;
-    minute++;
-    wdt_reset();
+    sekunde++;
+    if(sekunde==60){
+        sekunde=0;
+        minute++;
         if(minute==60){
-        minute= 0;
-        stunde++;
-            if(stunde==24){
-            stunde = 0;
-            }
-        }   
-   // }  
+            minute= 0;
+            stunde++;
+                if(stunde==24){
+                stunde = 0;
+                }
+            }   
+    }  
     //AUSGLEICH : 1,04 sekunden pro sekundenpuls, abweichung von 0,04 1sek/0,04 = 25 entspricht alle 25 sek, sekunde--
     ausgleich++;
     if(ausgleich==24){
     ausgleich = 0;
     sekunde--;
     }
-
     //ENTPRELLEN SLEEP TASTER
     while(prellS > 0) {
         prellS--; // Dekrementiere Prellvariable
     }
+    //BEENDEN Pause Datumsanzeige
     while(pause > 0) {
         pause--;
     }
-
 }
 
 //CTC TIMER0 für PWM und zählvariablen-dekrementierung
@@ -253,14 +235,13 @@ ISR(TIMER0_COMPA_vect){
 
     pwm++;
     if(pwm>=200)pwm=0;
-
     while(prellM > 0) {
         prellM--; // Dekrmentiere Prellvariable
     }
     while(prellH > 0) {
         prellH--; // Dekrementiere Prellvariable
     }
-        while(prellE > 0) {
+    while(prellE > 0) {
         prellE--; // Dekrementiere Prellvariable
     }
 }
@@ -269,15 +250,11 @@ ISR(TIMER0_COMPA_vect){
 ISR(INT0_vect){
 
     if(prellS==0){
-
         if(sleep_mode_on==false){
-
         sleep_mode_on = true;
         prellS = 1;
         }
-
         else{
-
         sleep_mode_on = false;
         prellS = 1;
         }
@@ -286,17 +263,16 @@ ISR(INT0_vect){
 
 //HOUR-BUTTON Einstellen Interrupt
 ISR(INT1_vect){
-    TIMSK2 |= (0<<TOIE2) ;  //disabel overflow 
+
+    TIMSK2 |= (0<<TOIE2) ;  
 
     if(prellH==0){
-
         if(countingH){
             stunde++;
             if(stunde>=24){
                 stunde = 0;
             }
             prellH=220;
-
         }
         else{
             countingH = true;
@@ -304,53 +280,42 @@ ISR(INT1_vect){
             prellH = 220;
         }
     }   
-    TIMSK2 |= (1<<TOIE2) ;  //enable overflow 
+    TIMSK2 |= (1<<TOIE2) ;   
 }
 
 //MINUTE-BUTTON-Einstellen Interrupt (pinchange interrupt)
 ISR(PCINT0_vect){
 
-
     if(prellM==0){
-
         if(countingM == true){
-                TIMSK2 |= (0<<TOIE2) ;  //disabel overflow 
-
+            TIMSK2 |= (0<<TOIE2) ; 
             minute++;
             if(minute>=60){
                 minute = 0;
             }
             prellM=220;
-            TIMSK2 |= (1<<TOIE2) ;  //enable overflow 
-
+            TIMSK2 |= (1<<TOIE2) ;   
         }
         else{
             countingM = true;
             minute = 0;
             prellM = 220;
         }
-    }   
-    
+    }      
 }
 
 ISR(PCINT2_vect) {
-    // Daten aus dem EEPROM lesen
+
+    // LESEN der Daten aus dem EEPROM
     aktueller_tag = eeprom_read_byte(&counterstorage0);  // Adresse für Tag
     aktueller_monat = eeprom_read_byte(&counterstorage1); // Adresse für Monat
-    
     pause = 1;
 
-    // Aktualisieren der Zeit mit den EEPROM-Daten
+    // ANZEIGEN DATUM mit den EEPROM-Daten, LOGIK identisch mit PWM Shift-ogik
     PORTC |= ((0b0111111) & aktueller_tag); 
-    hourBitShiftDown = ( aktueller_monat << 5); //Logik von 000xxxxx StundenByte für x = 0 oder 1 sollen die unteren 3 BITs auf PORTD5-7 angezeigt werden, shift um 5
-    hourBitShiftUp = ( (aktueller_monat >> 2) & 0b00000110); //Logig von 000xxxxx Stundenbyte fpr x = 0 oder 1 sollen bit 3 und bit 4 alleine aif PB1 und PB" stehen, dafür linksshift um 2 und bitmaske fürpb0
-    PORTD = (hourBitShiftDown & 0b11101101); //& mit Bitmaske, damit Pull-Up auf PD2&3 auf high bleibt
-    PORTB = (hourBitShiftUp & 0b00000111); //& mit Bitmaske, damit Pull-Up auf PB0 auf high bleibt
-
-    
-    // Zurücksetzen des Prell-Timers
-    prellE = 220;
-    // Aktivierung der Zählung für die Wartezeit von 3 Sekunden
-    
-
+    hourBitShiftDown = ( aktueller_monat << 5); 
+    hourBitShiftUp = ( (aktueller_monat >> 2) & 0b00000110); 
+    PORTD = (hourBitShiftDown & 0b11101101); 
+    PORTB = (hourBitShiftUp & 0b00000111); 
+    prellE = 220;    
 }
