@@ -1,4 +1,5 @@
 #define F_CPU 1000000UL
+
 #include <avr/io.h>
 #include <avr/eeprom.h>
 #include <avr/interrupt.h>
@@ -10,8 +11,8 @@
 
 //CLOCK
 volatile uint8_t sekunde = 0;
-volatile uint8_t minute = 0;
-volatile uint8_t stunde = 0;
+volatile uint8_t minute = 1;
+volatile uint8_t stunde = 14;
 volatile uint8_t ausgleich = 0;
 
 //LED
@@ -202,7 +203,7 @@ int main (void){
 //ISR CORE-CLOCK FUNCTIONALITY
 ISR(TIMER2_OVF_vect){
 
-    sekunde++;
+   sekunde++;
     if(sekunde==60){
         sekunde=0;
         minute++;
@@ -212,7 +213,7 @@ ISR(TIMER2_OVF_vect){
                 if(stunde==24){
                 stunde = 0;
                 }
-            }   
+           }   
     }  
     //AUSGLEICH : 1,04 sekunden pro sekundenpuls, abweichung von 0,04 1sek/0,04 = 25 entspricht alle 25 sek, sekunde--
     ausgleich++;
@@ -303,6 +304,7 @@ ISR(PCINT0_vect){
         }
     }      
 }
+
 
 ISR(PCINT2_vect) {
 
