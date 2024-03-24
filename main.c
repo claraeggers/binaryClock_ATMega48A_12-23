@@ -63,7 +63,7 @@ void pwm_fkt(volatile uint8_t pwm, volatile bool sleep_mode_on){
          PORTC = 0b00000000;
         }
         else{
-         PORTC = (minute & 0b00111111);         // display minute and hour uint8_t in led mit bitmaske  
+         PORTC = (minute & 0b0111111);         // display minute and hour uint8_t in led mit bitmaske  
          hourBitShiftDown = ( stunde << 5); //Logik von 000xxxxx StundenByte für x = 0 oder 1 sollen die unteren 3 BITs auf PORTD5-7 angezeigt werden, shift um 5
          hourBitShiftUp = ( (stunde >> 2) & 0b00000110); //Logig von 000xxxxx Stundenbyte fpr x = 0 oder 1 sollen bit 3 und bit 4 alleine aif PB1 und PB" stehen, dafür linksshift um 2 und bitmaske fürpb0
          PORTD = (hourBitShiftDown & 0b11101101); //& mit Bitmaske, damit Pull-Up auf PD2&3 auf high bleibt
@@ -82,11 +82,11 @@ void schlafen(volatile bool sleep_mode_on){
 
     if(sleep_mode_on){
         set_sleep_mode(SLEEP_MODE_PWR_SAVE);
+        power_timer0_disable();
+        power_adc_disable();
         sleep_enable();
         sleep_cpu();
         sleep_disable();
-        power_adc_disable();
-        power_timer0_disable();
     }
     else{
         sleep_disable();
